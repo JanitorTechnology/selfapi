@@ -28,6 +28,7 @@ var api = selfapi(app, '/api', 'API Root');
 
 // This does the same thing:
 var api = selfapi({
+  parent: app, // optional, but eventually required for your API to work
   path: '/api', // optional, defaults to '/'
   title: 'API Root', // optional
   description: '' // optional
