@@ -68,7 +68,7 @@ API.prototype = {
 
   // Export API documentation as Markdown.
   toMarkdown: function (basePath) {
-    var fullPath = normalizePath(this.path, basePath);
+    var fullPath = normalizePath(this.path, basePath) || '/';
 
     var markdown = '';
     if (this.title) {
