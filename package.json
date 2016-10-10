@@ -1,6 +1,6 @@
 {
   "name": "selfapi",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Simple, self-documenting and self-testing API system for Node.js.",
   "keywords": [
     "api",
@@ -20,7 +20,7 @@
     "name": "Jan Keromnes",
     "url": "http://jan.tools"
   },
-  "main": "api.js",
+  "main": "selfapi.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/jankeromnes/selfapi"
