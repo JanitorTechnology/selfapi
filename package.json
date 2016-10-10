@@ -1,0 +1,30 @@
+{
+  "name": "selfapi",
+  "version": "0.0.0",
+  "description": "Simple, self-documenting and self-testing API system for Node.js.",
+  "keywords": [
+    "api",
+    "rest",
+    "json",
+    "express",
+    "automatic",
+    "self-documenting",
+    "self-testing"
+  ],
+  "homepage": "https://github.com/jankeromnes/selfapi",
+  "bugs": {
+    "url": "https://github.com/jankeromnes/selfapi/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Jan Keromnes",
+    "url": "http://jan.tools"
+  },
+  "main": "api.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jankeromnes/selfapi"
+  },
+  "dependencies": {
+  }
+}
