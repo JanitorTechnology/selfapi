@@ -273,4 +273,6 @@ function selfapi (/* parent, …overrides, child */) {
 
 }
 
+selfapi.API = API;
+
 module.exports = selfapi;

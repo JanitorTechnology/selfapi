@@ -25,6 +25,9 @@
     "type": "git",
     "url": "https://github.com/jankeromnes/selfapi"
   },
+  "scripts": {
+    "test": "node tests.js"
+  },
   "dependencies": {
   }
 }
