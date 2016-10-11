@@ -1,6 +1,6 @@
 {
   "name": "selfapi",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Simple, self-documenting and self-testing API system for Node.js.",
   "keywords": [
     "api",
