@@ -41,7 +41,7 @@ API.prototype = {
     path = normalizePath(path);
     if (!path) {
       this.handlers[method] = parameters;
-      this.exportHandler(method, '', parameters);
+      this.exportHandler(method, null, parameters);
       return;
     }
 
@@ -55,9 +55,24 @@ API.prototype = {
   // Backpropagate a new request handler up the API resource tree in order to
   // register it at the root.
   exportHandler: function (method, path, parameters) {
-    if (this.parent) {
-      var fullPath = normalizePath(path, this.path);
-      this.parent.exportHandler(method, fullPath, parameters);
+    if (!this.parent) {
+      return;
+    }
+    var fullPath = normalizePath(path, this.path);
+    this.parent.exportHandler(method, fullPath, parameters);
+  },
+
+  // (Re-)export all request handlers from this API resource tree.
+  exportAllHandlers: function () {
+    if (!this.parent) {
+      return;
+    }
+    for (var method in this.handlers) {
+      var parameters = this.handlers[method];
+      this.exportHandler(method, null, parameters);
+    }
+    for (var path in this.children) {
+      this.children[path].exportAllHandlers();
     }
   },
 
@@ -105,18 +120,18 @@ API.prototype = {
     // Check if `parent` is another API instance.
     if (parent instanceof API) {
       parent.children[this.path] = this;
-      // TODO call exportHandler for each handler (and child handler)
       this._parent = parent;
+      this.exportAllHandlers();
       return;
     }
 
     // Check if `parent` is a supported server app.
     var exporter = getHandlerExporter(parent);
     if (exporter) {
-      // TODO call exportHandler for each handler (and child handler)
       this._parent = {
         exportHandler: exporter
       };
+      this.exportAllHandlers();
       return;
     }
 
@@ -181,7 +196,6 @@ function getHandlerExporter (app) {
 
   // `app` is an express-like server app.
   return function (method, path, parameters) {
-    console.log('handlerExporter', method, path, parameters);
     // Support restify.
     if (method === 'delete' && ('del' in app)) {
       method = 'del';
