@@ -5,6 +5,16 @@ var selfapi = require('./selfapi');
 
 var tests = [];
 
+/*
+tests.push({
+  title: '',
+  test: function (callback) {
+    // test something
+    callback(error);
+  }
+});
+*/
+
 tests.push({
   title: 'Pre-existing handlers exported to new parent',
   test: function (callback) {
@@ -17,7 +27,7 @@ tests.push({
         response.end('ok');
       }
     };
-    api.get('/', parameters);
+    api.get(parameters);
     // Add a parent afterwards.
     var app = fakeServer();
     selfapi(app, '/api', api);

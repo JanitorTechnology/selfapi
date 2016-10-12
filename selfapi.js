@@ -38,6 +38,11 @@ API.prototype = {
 
   // Add a new request handler to this API resource (or to a sub-resource).
   addHandler: function (method, path, parameters) {
+    if (path && !parameters) {
+      parameters = path;
+      path = null;
+    }
+
     path = normalizePath(path);
     if (!path) {
       this.handlers[method] = parameters;
