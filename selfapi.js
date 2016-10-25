@@ -1,7 +1,10 @@
 // Copyright © 2016 Jan Keromnes. All rights reserved.
 // The following code is covered by the MIT license.
 
+var http = require('http');
+var https = require('https');
 var nodepath = require('path');
+var url = require('url');
 
 
 // Simple, self-documenting and self-testing API system.
@@ -17,6 +20,8 @@ function API (parameters) {
 
   // Own request/response examples and tests.
   this.examples = parameters.examples || [];
+  this.beforeTests = parameters.beforeTests || null;
+  this.afterTests = parameters.afterTests || null;
 
   // Parent API resource (or root server app).
   this.parent = parameters.parent || null;
@@ -35,6 +40,47 @@ API.prototype = {
   api: selfapi,
 
   methods: ['get', 'post', 'patch', 'put', 'delete'],
+
+  set parent (parent) {
+    // Check if the same `parent` is already in use.
+    if (parent === this._parent) {
+      return;
+    }
+
+    // Check if `parent` is another API instance.
+    if (parent instanceof API) {
+      parent.children[this.path] = this;
+      this._parent = parent;
+      this.exportAllHandlers();
+      return;
+    }
+
+    // Check if `parent` is a supported server app.
+    var exporter = getHandlerExporter(parent);
+    if (exporter) {
+      this._parent = {
+        exportHandler: exporter
+      };
+      this.exportAllHandlers();
+      return;
+    }
+
+    // Unsupported parent type, ignore.
+    this._parent = null;
+    return;
+  },
+
+  get parent () {
+    return this._parent || null;
+  },
+
+  set path (path) {
+    this._path = normalizePath(path);
+  },
+
+  get path () {
+    return this._path || null;
+  },
 
   // Add a new request handler to this API resource (or to a sub-resource).
   addHandler: function (method, path, parameters) {
@@ -81,11 +127,6 @@ API.prototype = {
     }
   },
 
-  // Test API against its own examples.
-  test: function () {
-    // TODO
-  },
-
   // Export API documentation as Markdown.
   toMarkdown: function (basePath) {
     var fullPath = normalizePath(this.path, basePath) || '/';
@@ -98,16 +139,58 @@ API.prototype = {
       markdown += this.description + '\n\n';
     }
 
+    // Export own request handlers.
     for (var method in this.handlers) {
       var handler = this.handlers[method];
       markdown += '## ' + (handler.title || '(no title)') + '\n\n';
-      markdown += '    ' + method.toUpperCase() + ' ' + fullPath + '\n\n';
+      markdown += '`' + method.toUpperCase() + ' ' + fullPath + '`\n\n';
       if (handler.description) {
         markdown += handler.description + '\n\n';
       }
-      // TODO example request + example response
+
+      if (handler.examples && handler.examples.length > 0) {
+        var example = handler.examples[0];
+
+        markdown += '### Example request:\n\n';
+        var exampleRequest = example.request || {};
+        var examplePath = fullPath;
+        if (exampleRequest.urlParameters) {
+          for (var parameter in exampleRequest.urlParameters) {
+            var regex = new RegExp(':' + parameter, 'g');
+            var value = exampleRequest.urlParameters[parameter];
+            examplePath = examplePath.replace(regex, value);
+          }
+        }
+        markdown += '    ' + method.toUpperCase() + ' ' + examplePath + '\n';
+        if ('body' in exampleRequest) {
+          var requestBody = '    ' +
+            exampleRequest.body.trim().replace(/\n/g, '\n    ');
+          markdown += '    \n' + requestBody + '\n';
+        }
+        markdown += '\n';
+
+        markdown += '### Example response:\n\n';
+        var exampleResponse = example.response || {};
+        var statusCode = exampleResponse.status || 200;
+        var statusMessage = http.STATUS_CODES[statusCode];
+        markdown += '    Status: ' + statusCode + ' ' + statusMessage + '\n';
+        if (exampleResponse.headers) {
+          for (var header in exampleResponse.headers) {
+            var headerValue = exampleResponse.headers[header];
+            markdown += '    ' + header + ': ' + headerValue + '\n';
+          }
+        }
+        if ('body' in exampleResponse) {
+          var responseBody = '    ' +
+            exampleResponse.body.trim().replace(/\n/g, '\n    ');
+          markdown += '    \n' + responseBody + '\n';
+        }
+        markdown += '\n';
+        // TODO Document all unique possible status codes?
+      }
     }
 
+    // Export children's request handlers recursively.
     for (var path in this.children) {
       var child = this.children[path];
       markdown += child.toMarkdown(fullPath);
@@ -116,45 +199,197 @@ API.prototype = {
     return markdown;
   },
 
-  set parent (parent) {
-    // Check if the same `parent` is already in use.
-    if (parent === this._parent) {
-      return;
+  // Test the API against its own examples.
+  test: function (baseSite, callback) {
+
+    baseSite = baseSite || 'http://localhost';
+    callback = callback || function (error, results) {
+      if (error) {
+        if (error.stack) {
+          console.error(error.stack);
+        } else {
+          console.error('Error:', error);
+        }
+      }
+      console.log('Results: ' + results.passed.length + '/' + results.total +
+        ' test' + (results.total === 1 ? '' : 's') + ' passed.');
+      if (results.failed.length > 0) {
+        console.error('Failed:', JSON.stringify(results.failed, null, 2));
+      }
+    };
+
+    var client = null;
+    var results = {
+      failed: [],
+      passed: [],
+      total: 0
+    };
+
+    var testUrl = url.parse(String(baseSite));
+    testUrl.pathname = normalizePath(this.path, testUrl.pathname);
+    testUrl = url.parse(url.format(testUrl));
+
+    switch (testUrl.protocol) {
+      case 'https:':
+        client = https;
+        break;
+      case 'http:':
+        client = http;
+        break;
+      default:
+        next(new Error('Invalid base site: ' + baseSite +
+          ' (should start with "http://" or "https://")'));
+        return;
     }
 
-    // Check if `parent` is another API instance.
-    if (parent instanceof API) {
-      parent.children[this.path] = this;
-      this._parent = parent;
-      this.exportAllHandlers();
-      return;
+    if (typeof this.beforeTests === 'function') {
+      this.beforeTests();
     }
 
-    // Check if `parent` is a supported server app.
-    var exporter = getHandlerExporter(parent);
-    if (exporter) {
-      this._parent = {
-        exportHandler: exporter
+    // Test a request handler against one of its examples.
+    function testHandlerExample (method, handler, example) {
+      var options = {
+        hostname: testUrl.hostname,
+        port: testUrl.port,
+        path: testUrl.pathname,
+        method: method
       };
-      this.exportAllHandlers();
-      return;
+
+      var exampleRequest = example.request || {};
+
+      if (exampleRequest.urlParameters) {
+        for (var parameter in exampleRequest.urlParameters) {
+          var regex = new RegExp(':' + parameter, 'g');
+          var value = exampleRequest.urlParameters[parameter];
+          options.path = options.path.replace(regex, value);
+        }
+      }
+
+      if (exampleRequest.headers) {
+        options.headers = exampleRequest.headers;
+      }
+
+      var request = client.request(options, function (response) {
+        var success = true;
+        var exampleResponse = example.response || {};
+
+        var expectedStatusCode = exampleResponse.status || 200;
+        if (response.statusCode !== expectedStatusCode) {
+          success = false;
+        }
+
+        var expectedHeaders = null;
+        if (exampleResponse.headers) {
+          expectedHeaders = exampleResponse.headers;
+          for (var header in expectedHeaders) {
+            if (response[header.toLowerCase()] !== expectedHeaders[header]) {
+              success = false;
+              break;
+            }
+          }
+        }
+
+        var expectedBody = null;
+        if ('body' in exampleResponse) {
+          expectedBody = exampleResponse.body.trim();
+        }
+
+        var body = '';
+        response.on('data', function (chunk) {
+          body += String(chunk);
+        });
+
+        response.on('end', function () {
+          if (expectedBody !== null && body.trim() !== expectedBody) {
+            success = false;
+          }
+
+          if (success) {
+            results.passed.push(example);
+            next();
+            return;
+          }
+
+          var summary = {
+            request: exampleRequest,
+            expectedResponse: exampleResponse,
+            actualResponse: {
+              status: response.statusCode
+            }
+          };
+          if (expectedHeaders !== null) {
+            summary.actualResponse.headers = response.headers;
+          }
+          if (expectedBody !== null) {
+            summary.actualResponse.body = body;
+          }
+
+          results.failed.push(summary);
+          next();
+        });
+      });
+
+      if ('body' in exampleRequest) {
+        request.write(exampleRequest.body);
+      }
+      request.end();
     }
 
-    // Unsupported parent type, ignore.
-    this._parent = null;
-    return;
-  },
+    // Test own request handlers.
+    for (var method in this.handlers) {
+      var parameters = this.handlers[method];
+      // Copy the array of examples, and test them in random order.
+      var examples = parameters.examples.slice();
+      results.total += examples.length;
+      while (examples.length > 0) {
+        var i = Math.floor(Math.random() * examples.length);
+        var example = examples.splice(i, 1)[0];
+        testHandlerExample(method, parameters, example);
+      }
+    }
 
-  get parent () {
-    return this._parent || null;
-  },
+    // Test children's request handlers recursively.
+    var pending = 0;
+    for (var path in this.children) {
+      pending++;
+      this.children[path].test(testUrl.href, function (error, childResults) {
+        if (childResults) {
+          results.total += childResults.total;
+          results.failed = results.failed.concat(childResults.failed);
+          results.passed = results.passed.concat(childResults.passed);
+        }
+        if (error) {
+          next(error);
+          return;
+        }
+        pending--;
+        next();
+      });
+    }
 
-  set path (path) {
-    this._path = normalizePath(path);
-  },
+    // Wait for all tests to complete before finishing this test run.
+    function next (error) {
+      if (error) {
+        finish(error, results);
+        return;
+      }
+      var completed = results.failed.length + results.passed.length;
+      if (completed === results.total && pending === 0) {
+        finish(null, results);
+      }
+    }
 
-  get path () {
-    return this._path || null;
+    // Finish this test run, call back with the results.
+    function finish (error, results) {
+      callback(error, results);
+      if (typeof this.afterTests === 'function') {
+        this.afterTests();
+      }
+    }
+
+    // Don't hang when there are no tests.
+    next();
+
   }
 
 };
