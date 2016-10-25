@@ -29,5 +29,8 @@
     "test": "node tests.js"
   },
   "dependencies": {
+  },
+  "devDependencies": {
+    "express": "~4.14.0"
   }
 }
