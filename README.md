@@ -23,76 +23,47 @@ Use it:
 ```
 var selfapi = require('selfapi');
 
-// API root, mounted on your server app (at /api):
-var api = selfapi(app, '/api', 'API Root');
+// API root resource, mounted at '/api' on your server app:
+var api = selfapi(app, '/api', 'My API');
 
-// This does the same thing:
-var api = selfapi({
-  parent: app, // optional, but eventually required for your API to work
-  path: '/api', // optional, defaults to '/'
-  title: 'API Root', // optional
-  description: '' // optional
-});
-
-// This too:
-app.api = selfapi;
-var api = app.api('/api', 'API Root');
-
-// This too:
-var router = express.Router();
-app.use('/api', router);
-var api = selfapi(router, '/', 'API Root');
-
-// GET /api
-api.get('/', {
+api.get({
   title: 'Show API version',
+  description: 'Show the latest API version currently supported.',
   handler: function (request, response) {
     response.end('v1.0');
   },
   examples: [{
-    path: '/',
-    output: 'v1.0'
+    response: {
+      body: 'v1.0'
+    }
   }]
 });
 
-// Users API resource, mounted on the API root (at /api/users):
-var users = api.api('/users', 'Users');
+// API sub-resource, mounted at '/api/items' on your server app:
+var items = api.api('/items', 'Items');
 
-// This does the same thing:
-var users = selfapi(api, '/users', 'Users');
-
-// This too:
-var users = selfapi({
-  parent: api,
-  path: '/users',
-  title: 'Users',
-  description: ''
-});
-
-// … you get the idea.
-
-// POST /api/users
-users.post('/', {
-  title: 'Create a user',
+items.post({
+  title: 'Add a new item',
+  description: 'Create a new item and add it to our collection.',
   handler: function (request, response) {
-    response.statusCode = 201; // Created
-    response.end(JSON.stringify({ id: request.id }));
+    var json = '';
+    request.on('data', function (chunk) {
+      json += String(chunk);
+    });
+    request.on('end', function () {
+      var item = JSON.parse(json);
+      response.statusCode = 201; // Created
+      response.end(JSON.stringify({ status: 'Created', item: item }));
+    });
   },
   examples: [{
-    path: '/',
-    output: '{"id":"jan"}'
-  }]
-});
-
-// GET /api/users/:id
-users.get('/:id', {
-  title: 'Get a single user',
-  handler: function (request, response) {
-    response.end(JSON.stringify({ id: request.id }));
-  },
-  examples: [{
-    path: '/jan',
-    output: '{"id":"jan"}'
+    request: {
+      body: '{"name":"My Item"}'
+    },
+    response: {
+      status: 201,
+      body: '{"status":"Created","item":{"name":"My Item"}}'
+    }
   }]
 });
 ```
@@ -101,29 +72,146 @@ Your API can self-document:
 
 ```
 > console.log(api.toMarkdown());
-# API Root
+# My API
 
 ## Show API version
 
+`GET /api`
+
+Show the latest API version currently supported.
+
+### Example request:
+
     GET /api
 
-# Users
+### Example response:
 
-## Create a user
+    Status: 200 OK
 
-    POST /api/users
+    v1.0
 
+# Items
+
+## Add a new item
+
+`POST /api/items`
+
+Create a new item and add it to our collection.
+
+### Example request:
+
+    POST /api/items
+
+    {"name":"My Item"}
+
+### Example response:
+
+    Status: 201 Created
+
+    {"status":"Created","item":{"name":"My Item"}}
 …
 ```
 
-… and self-test (TODO):
+… and self-test, using its own examples:
 
 ```
-> api.test();
-
-All examples passed.
+> api.test('http://localhost:8080');
+Results: 2/2 tests passed.
 ```
 
+Note: You can also document and test each API resource individually, but remember to provide the correct base path like so:
+
+```
+> console.log(items.toMarkdown('/api'))
+## Add a new item
+
+`POST /api/items`
+
+Create a new item and add it to our collection
+…
+
+> items.test('http://localhost:8080/api')
+Results: 1/1 test passed.
+```
+
+## Getting started
+
+Create your API using [express](http://expressjs.com/):
+
+```
+var express = require('express');
+var selfapi = require('selfapi');
+
+// Create your server app:
+var app = express();
+
+// Create your API, mounted at '/api' on your server app:
+var api = selfapi(app, '/api', 'My API');
+
+// This does exactly the same thing:
+var api = selfapi({
+  parent: app, // can be omitted, but eventually required for your API to work
+  path: '/api', // optional, defaults to no path prefix
+  title: 'My API', // optional
+  description: '' // optional
+});
+
+// This too:
+app.api = selfapi;
+var api = app.api('/api', 'My API');
+
+// This too:
+var router = express.Router();
+app.use('/api', router);
+var api = selfapi(router, '/', 'My API');
+```
+
+Write request handlers the same way you would in express, just with a bit more
+info:
+
+```
+// This will register some metadata, and export the handler function to express.
+api.get({
+  title: 'Show API version',
+  description: 'Show the latest API version currently supported.',
+  handler: function (request, response) {
+    // Here you can do anything you would in `app.get('/api/items', …)`, e.g.
+    response.json({ version: 'v1.0' });
+  },
+  examples: [{
+    response: {
+      body: '{"version":"v1.0"}'
+    }
+  }]
+});
+```
+
+Create API sub-resources when it seems useful.
+
+Note: They're basically just a common prefix for similar request handlers
+(a bit like a very lightweight express
+[Router](http://expressjs.com/en/4x/api.html#router)), but they'll create
+dedicated documentation sections, and can be tested individually.
+
+```
+// Create an API sub-resource, mounted at '/api/items' on your server app:
+var items = api.api('/items', 'Items');
+
+// This does the same thing:
+var items = selfapi(api, '/items', 'Items');
+
+// This too:
+var items = selfapi({
+  parent: api,
+  path: '/items',
+  title: 'Items'
+});
+
+// … you get the idea.
+```
+
+For more examples of how to use Self API, please have a look at the
+[tests](https://github.com/jankeromnes/selfapi/blob/master/tests.js).
 
 ## License
 
