@@ -151,41 +151,36 @@ API.prototype = {
       if (handler.examples && handler.examples.length > 0) {
         var example = handler.examples[0];
 
-        html += '<p><strong>Example request:</strong></p>\n';
-        var exampleRequest = example.request || {};
-        var examplePath = fullPath;
-        if (exampleRequest.urlParameters) {
-          for (var parameter in exampleRequest.urlParameters) {
-            var regex = new RegExp(':' + parameter, 'g');
-            var value = exampleRequest.urlParameters[parameter];
-            examplePath = examplePath.replace(regex, value);
+        var request = example.request || {};
+        if (request.headers || request.body) {
+          html += '<h3>Input</h3>\n<pre>';
+          var requestHeaders = request.headers || {};
+          for (var header in requestHeaders) {
+            html += header + ': ' + requestHeaders[header] + '\n';
           }
-        }
-        html += '<pre>' + method.toUpperCase() + ' ' + examplePath + '\n';
-        if (exampleRequest.headers) {
-          for (var header in exampleRequest.headers) {
-            html += header + ': ' + exampleRequest.headers[header] + '\n';
+          if (request.body) {
+            html += '\n' + request.body.trim() + '\n';
           }
+          html += '</pre>\n';
         }
-        if ('body' in exampleRequest) {
-          html += '\n' + exampleRequest.body.trim() + '\n';
-        }
-        html += '</pre>\n';
 
-        html += '<p><strong>Example response:</strong></p>\n';
-        var exampleResponse = example.response || {};
-        var statusCode = exampleResponse.status || 200;
-        var statusMessage = http.STATUS_CODES[statusCode];
-        html += '<pre>Status: ' + statusCode + ' ' + statusMessage + '\n';
-        if (exampleResponse.headers) {
-          for (var header in exampleResponse.headers) {
-            html += header + ': ' + exampleResponse.headers[header] + '\n';
+        html += '<h3>Response</h3>\n';
+        var response = example.response || {};
+        if (response.status || response.headers || response.body) {
+          html += '<pre>';
+          if (response.status) {
+            var message = http.STATUS_CODES[response.status];
+            html += 'Status: ' + response.status + ' ' + message + '\n';
           }
+          var responseHeaders = response.headers || {};
+          for (var header in responseHeaders) {
+            html += header + ': ' + responseHeaders[header] + '\n';
+          }
+          if (response.body) {
+            html += '\n' + response.body.trim() + '\n';
+          }
+          html += '</pre>\n';
         }
-        if ('body' in exampleResponse) {
-          html += '\n' + exampleResponse.body.trim() + '\n';
-        }
-        html += '</pre>\n';
         // TODO Document all unique possible status codes?
         // TODO Document all request parameters?
       }
@@ -224,44 +219,34 @@ API.prototype = {
       if (handler.examples && handler.examples.length > 0) {
         var example = handler.examples[0];
 
-        markdown += '### Example request:\n\n';
-        var exampleRequest = example.request || {};
-        var examplePath = fullPath;
-        if (exampleRequest.urlParameters) {
-          for (var parameter in exampleRequest.urlParameters) {
-            var regex = new RegExp(':' + parameter, 'g');
-            var value = exampleRequest.urlParameters[parameter];
-            examplePath = examplePath.replace(regex, value);
+        var request = example.request || {};
+        if (request.headers || request.body) {
+          markdown += '### Example input:\n\n';
+          var requestHeaders = request.headers || {};
+          for (var header in requestHeaders) {
+            markdown += '    ' + header + ': ' + requestHeaders[header] + '\n';
           }
-        }
-        markdown += '    ' + method.toUpperCase() + ' ' + examplePath + '\n';
-        if (exampleRequest.headers) {
-          for (var header in exampleRequest.headers) {
-            var requestHeaderValue = exampleRequest.headers[header];
-            markdown += '    ' + header + ': ' + requestHeaderValue + '\n';
+          if (request.body) {
+            var requestBody = '    ' +
+              request.body.trim().replace(/\n/g, '\n    ');
+            markdown += '    \n' + requestBody + '\n';
           }
+          markdown += '\n';
         }
-        if ('body' in exampleRequest) {
-          var requestBody = '    ' +
-            exampleRequest.body.trim().replace(/\n/g, '\n    ');
-          markdown += '    \n' + requestBody + '\n';
-        }
-        markdown += '\n';
 
         markdown += '### Example response:\n\n';
-        var exampleResponse = example.response || {};
-        var statusCode = exampleResponse.status || 200;
-        var statusMessage = http.STATUS_CODES[statusCode];
-        markdown += '    Status: ' + statusCode + ' ' + statusMessage + '\n';
-        if (exampleResponse.headers) {
-          for (var header in exampleResponse.headers) {
-            var responseHeaderValue = exampleResponse.headers[header];
-            markdown += '    ' + header + ': ' + responseHeaderValue + '\n';
-          }
+        var response = example.response || {};
+        if (response.status) {
+          var message = http.STATUS_CODES[response.status];
+          markdown += '    Status: ' + response.status + ' ' + message + '\n';
         }
-        if ('body' in exampleResponse) {
+        var responseHeaders = response.headers || {};
+        for (var header in responseHeaders) {
+          markdown += '    ' + header + ': ' + responseHeaders[header] + '\n';
+        }
+        if (response.body) {
           var responseBody = '    ' +
-            exampleResponse.body.trim().replace(/\n/g, '\n    ');
+            response.body.trim().replace(/\n/g, '\n    ');
           markdown += '    \n' + responseBody + '\n';
         }
         markdown += '\n';
