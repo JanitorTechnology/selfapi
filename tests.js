@@ -113,7 +113,8 @@ tests.push({
         var action = request.params.action;
         switch (action) {
           case 'create':
-            response.status(201).json({ status: 'Created the thing' });
+            var item = request.query.item;
+            response.status(201).json({ status: 'Created ' + item });
             return;
           case 'coffee':
             response.status(500).json({ error: 'Not implemented yet' });
@@ -134,7 +135,8 @@ tests.push({
 
       examples: [{
         request: {
-          urlParameters: { action: 'create' }
+          urlParameters: { action: 'create' },
+          queryParameters: { item: 'the thing' }
         },
         response: {
           status: 201,

@@ -355,7 +355,7 @@ API.prototype = {
 
     // Test a request handler against one of its examples.
     function testHandlerExample (method, handler, example) {
-      var options = {
+      var requestOptions = {
         hostname: testUrl.hostname,
         port: testUrl.port,
         path: testUrl.pathname,
@@ -365,18 +365,28 @@ API.prototype = {
       var exampleRequest = example.request || {};
 
       if (exampleRequest.urlParameters) {
-        for (var parameter in exampleRequest.urlParameters) {
-          var regex = new RegExp(':' + parameter, 'g');
-          var value = exampleRequest.urlParameters[parameter];
-          options.path = options.path.replace(regex, value);
+        for (var urlParameter in exampleRequest.urlParameters) {
+          var regex = new RegExp(':' + urlParameter, 'g');
+          var urlValue = exampleRequest.urlParameters[urlParameter];
+          requestOptions.path = requestOptions.path.replace(regex, urlValue);
         }
       }
 
-      if (exampleRequest.headers) {
-        options.headers = exampleRequest.headers;
+      if (exampleRequest.queryParameters) {
+        var queryPairs = [];
+        for (var queryParameter in exampleRequest.queryParameters) {
+          var queryValue = exampleRequest.queryParameters[queryParameter];
+          queryPairs.push(encodeURIComponent(queryParameter) +
+            (queryValue ? '=' + encodeURIComponent(queryValue) : ''));
+        }
+        requestOptions.path += '?' + queryPairs.join('&');
       }
 
-      var request = client.request(options, function (response) {
+      if (exampleRequest.headers) {
+        requestOptions.headers = exampleRequest.headers;
+      }
+
+      var request = client.request(requestOptions, function (response) {
         var success = true;
         var exampleResponse = example.response || {};
 
