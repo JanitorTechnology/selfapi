@@ -363,6 +363,7 @@ API.prototype = {
       };
 
       var exampleRequest = example.request || {};
+      var exampleResponse = example.response || {};
 
       if (exampleRequest.urlParameters) {
         for (var urlParameter in exampleRequest.urlParameters) {
@@ -388,7 +389,6 @@ API.prototype = {
 
       var request = client.request(requestOptions, function (response) {
         var success = true;
-        var exampleResponse = example.response || {};
 
         var expectedStatusCode = exampleResponse.status || 200;
         if (response.statusCode !== expectedStatusCode) {
@@ -417,6 +417,7 @@ API.prototype = {
         });
 
         response.on('end', function () {
+          clearTimeout(timeout);
           if (expectedBody !== null && body.trim() !== expectedBody) {
             success = false;
           }
@@ -442,6 +443,19 @@ API.prototype = {
           maybeFinish();
         });
       });
+
+      // If a request takes longer than 10 seconds, consider it failed.
+      var timeout = setTimeout(function () {
+        request.abort();
+        results.failed.push({
+          request: exampleRequest,
+          expectedResponse: exampleResponse,
+          actualResponse: {
+            error: 'timed out'
+          }
+        });
+        maybeFinish();
+      }, 10000);
 
       if ('body' in exampleRequest) {
         request.write(exampleRequest.body);
