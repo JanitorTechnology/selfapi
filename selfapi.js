@@ -18,8 +18,7 @@ function API (parameters) {
   this.title = parameters.title || null;
   this.description = parameters.description || null;
 
-  // Own request/response examples and tests.
-  this.examples = parameters.examples || [];
+  // Own test setup functions.
   this.beforeTests = parameters.beforeTests || null;
   this.afterTests = parameters.afterTests || null;
 
@@ -271,28 +270,26 @@ API.prototype = {
     baseSite = baseSite || 'http://localhost';
     callback = callback || function (error, results) {
       if (error) {
-        if (error.stack) {
-          console.error(error.stack);
-        } else {
-          console.error('Error:', error);
-        }
+        console.error.apply(console,
+          error.stack ? [ error.stack ] : [ 'Error:', error ]);
       }
       console.log('Results: ' + results.passed.length + '/' + results.total +
         ' test' + (results.total === 1 ? '' : 's') + ' passed.');
       if (results.failed.length > 0) {
-        console.error('Failed:', JSON.stringify(results.failed, null, 2));
+        console.error('Failed tests:', JSON.stringify(results.failed, null, 2));
       }
     };
 
     var client = null;
+    var pendingChildren = 0;
     var results = {
       failed: [],
       passed: [],
       total: 0
     };
-
+    var self = this;
     var testUrl = url.parse(String(baseSite));
-    testUrl.pathname = normalizePath(this.path, testUrl.pathname);
+    testUrl.pathname = normalizePath(self.path, testUrl.pathname);
     testUrl = url.parse(url.format(testUrl));
 
     switch (testUrl.protocol) {
@@ -303,9 +300,57 @@ API.prototype = {
         client = http;
         break;
       default:
-        next(new Error('Invalid base site: ' + baseSite +
+        finish(new Error('Invalid base site: ' + baseSite +
           ' (should start with "http://" or "https://")'));
         return;
+    }
+
+    if (typeof self.beforeTests === 'function') {
+      self.beforeTests(function (error) {
+        if (error) {
+          finish(error);
+          return;
+        }
+        testAllHandlers();
+      });
+    } else {
+      testAllHandlers();
+    }
+
+    function testAllHandlers () {
+      // Test own request handlers.
+      for (var method in self.handlers) {
+        var handler = self.handlers[method];
+        // Copy the array of examples, and test them in random order.
+        var examples = handler.examples.slice();
+        results.total += examples.length;
+        while (examples.length > 0) {
+          var i = Math.floor(Math.random() * examples.length);
+          var example = examples.splice(i, 1)[0];
+          testHandlerExample(method, handler, example);
+        }
+      }
+
+      // Test children's request handlers recursively.
+      for (var path in self.children) {
+        pendingChildren++;
+        self.children[path].test(testUrl.href, function (error, childResults) {
+          if (childResults) {
+            results.total += childResults.total;
+            results.failed = results.failed.concat(childResults.failed);
+            results.passed = results.passed.concat(childResults.passed);
+          }
+          if (error) {
+            finish(error);
+            return;
+          }
+          pendingChildren--;
+          maybeFinish();
+        });
+      }
+
+      // Don't hang when there are no tests/examples or children.
+      maybeFinish();
     }
 
     // Test a request handler against one of its examples.
@@ -365,13 +410,11 @@ API.prototype = {
           if (expectedBody !== null && body.trim() !== expectedBody) {
             success = false;
           }
-
           if (success) {
             results.passed.push(example);
-            next();
+            maybeFinish();
             return;
           }
-
           var summary = {
             request: exampleRequest,
             expectedResponse: exampleResponse,
@@ -385,9 +428,8 @@ API.prototype = {
           if (expectedBody !== null) {
             summary.actualResponse.body = body;
           }
-
           results.failed.push(summary);
-          next();
+          maybeFinish();
         });
       });
 
@@ -397,52 +439,24 @@ API.prototype = {
       request.end();
     }
 
-    // Test own request handlers.
-    for (var method in this.handlers) {
-      var handler = this.handlers[method];
-      // Copy the array of examples, and test them in random order.
-      var examples = handler.examples.slice();
-      results.total += examples.length;
-      while (examples.length > 0) {
-        var i = Math.floor(Math.random() * examples.length);
-        var example = examples.splice(i, 1)[0];
-        testHandlerExample(method, handler, example);
-      }
-    }
-
-    // Test children's request handlers recursively.
-    var pending = 0;
-    for (var path in this.children) {
-      pending++;
-      this.children[path].test(testUrl.href, function (error, childResults) {
-        if (childResults) {
-          results.total += childResults.total;
-          results.failed = results.failed.concat(childResults.failed);
-          results.passed = results.passed.concat(childResults.passed);
-        }
-        if (error) {
-          next(error);
-          return;
-        }
-        pending--;
-        next();
-      });
-    }
-
-    // Wait for all tests to complete before calling back with the results.
-    function next (error) {
-      if (error) {
-        callback(error, results);
-        return;
-      }
+    // Wait for all tests to complete before finishing this test run.
+    function maybeFinish () {
       var completed = results.failed.length + results.passed.length;
-      if (completed === results.total && pending === 0) {
-        callback(null, results);
+      if (completed === results.total && pendingChildren === 0) {
+        finish();
       }
     }
 
-    // Don't hang when there are no tests.
-    next();
+    // Call back with the final test results.
+    function finish (error) {
+      if (typeof self.afterTests === 'function') {
+        self.afterTests(function (err) {
+          callback(error || err || null, results);
+        });
+      } else {
+        callback(error, results);
+      }
+    }
 
   }
 

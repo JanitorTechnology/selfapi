@@ -9,16 +9,6 @@ var selfapi = require('./selfapi');
 
 var tests = [];
 
-/*
-tests.push({
-  title: '',
-  test: function (port, callback) {
-    // test something
-    callback(error);
-  }
-});
-*/
-
 tests.push({
 
   title: 'Pre-existing handlers exported to new parent',
@@ -196,8 +186,7 @@ tests.push({
         if (results.passed.length !== 4 || results.failed.length !== 1) {
           callback(new Error(
             'Self-test results should include 1 failed and 4 passed: ' +
-            JSON.stringify(results, null, 2)
-          ));
+            JSON.stringify(results, null, 2)));
           return;
         }
         callback();
@@ -207,6 +196,100 @@ tests.push({
   }
 
 });
+
+tests.push({
+
+  title: 'Using beforeTests() and afterTests()',
+
+  test: function (port, callback) {
+
+    // Keep track of.
+    var beforeTestsCalled = 0;
+    var afterTestsCalled = 0;
+    var handlerCalled = 0;
+
+    // Create a new API using Express, with custom test setup functions.
+    var app = express();
+    var api = selfapi(app, '/api', {
+      beforeTests: function (next) {
+        if (beforeTestsCalled > 0) {
+          callback(new Error('beforeTests() should be called only once'));
+          return;
+        }
+        if (handlerCalled > 0 || afterTestsCalled > 0) {
+          callback(new Error('beforeTests() should be called first'));
+          return;
+        }
+        beforeTestsCalled++;
+        next();
+      },
+      afterTests: function (next) {
+        if (afterTestsCalled > 0) {
+          callback(new Error('afterTests() should be called only once'));
+          return;
+        }
+        afterTestsCalled++;
+        next();
+      }
+    });
+
+    // Add a basic request handler.
+    api.get({
+      title: 'Perform an action',
+      handler: function (request, response) {
+        if (beforeTestsCalled < 1) {
+          callback(new Error('beforeTests() should be called'));
+          return;
+        }
+        if (afterTestsCalled > 0) {
+          callback(new Error('afterTests() should be called last'));
+          return;
+        }
+        handlerCalled++;
+        response.end('ok');
+      },
+      examples: [{
+        response: {
+          body: 'ok'
+        }
+      }]
+    });
+
+    // Start the app and self-test the API.
+    app.listen(port, function () {
+      api.test('http://localhost:' + port, function (error, results) {
+        if (error) {
+          callback(error);
+          return;
+        }
+        if (handlerCalled < 1) {
+          callback(new Error('Request handler should be called'));
+          return;
+        }
+        if (afterTestsCalled < 1) {
+          callback(new Error('afterTests() should be called'));
+          return;
+        }
+        callback();
+      });
+    });
+
+  }
+
+});
+
+/*
+tests.push({
+
+  title: '',
+
+  test: function (port, callback) {
+    // test something
+    // callback(error);
+  }
+
+});
+*/
 
 // TODO test all ways to create API resources
 // TODO test that documentation works
@@ -226,49 +309,42 @@ function fakeServer () {
   return server;
 }
 
-var nextPort = 42000;
+var nextPort = 9000;
 
 function getPort (callback) {
   var port = nextPort++;
   var server = net.createServer();
   server.listen(port, function (error) {
-    server.once('close', function () {
-      callback(port);
-    });
+    server.once('close', function () { callback(port); });
     server.close();
   });
-  server.on('error', function (error) {
-    getPort(callback);
-  });
+  server.on('error', function (error) { getPort(callback); });
 }
 
-var unfinished = tests.length;
+var unfinishedTests = tests.length;
 
-function report (test, error) {
-  if (error) {
-    console.error('[FAIL]', test.title);
-    if (error.stack) {
-      console.error(error.stack);
-    } else {
-      console.error('Error:', error);
-    }
-  } else {
+function reportTest (test, error) {
+  if (!error) {
     console.log('[OK]', test.title);
+  } else {
+    console.error('[FAIL]', test.title);
+    console.error.apply(console,
+      error.stack ? [ error.stack ] : [ 'Error:', error ]);
   }
-  unfinished--;
-  if (unfinished === 0) {
+  unfinishedTests--;
+  if (unfinishedTests === 0) {
     process.exit();
   }
 }
 
-function run (test) {
+function runTest (test) {
   getPort(function (port) {
     try {
       test.test(port, function (error) {
-        report(test, error);
+        reportTest(test, error);
       });
     } catch (error) {
-      report(test, error);
+      reportTest(test, error);
     }
   });
 }
@@ -276,5 +352,5 @@ function run (test) {
 while (tests.length > 0) {
   var i = Math.floor(Math.random() * tests.length);
   var test = tests.splice(i, 1)[0];
-  run(test);
+  runTest(test);
 }
