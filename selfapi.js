@@ -164,10 +164,9 @@ API.prototype = {
           html += '</pre>\n';
         }
 
-        html += '<h3>Response</h3>\n';
         var response = example.response || {};
         if (response.status || response.headers || response.body) {
-          html += '<pre>';
+          html += '<h3>Response</h3>\n<pre>';
           if (response.status) {
             var message = http.STATUS_CODES[response.status];
             html += 'Status: ' + response.status + ' ' + message + '\n';
@@ -234,22 +233,24 @@ API.prototype = {
           markdown += '\n';
         }
 
-        markdown += '### Example response:\n\n';
         var response = example.response || {};
-        if (response.status) {
-          var message = http.STATUS_CODES[response.status];
-          markdown += '    Status: ' + response.status + ' ' + message + '\n';
+        if (response.status || response.headers || response.body) {
+          markdown += '### Example response:\n\n';
+          if (response.status) {
+            var message = http.STATUS_CODES[response.status];
+            markdown += '    Status: ' + response.status + ' ' + message + '\n';
+          }
+          var responseHeaders = response.headers || {};
+          for (var header in responseHeaders) {
+            markdown += '    ' + header + ': ' + responseHeaders[header] + '\n';
+          }
+          if (response.body) {
+            var responseBody = '    ' +
+              response.body.trim().replace(/\n/g, '\n    ');
+            markdown += '    \n' + responseBody + '\n';
+          }
+          markdown += '\n';
         }
-        var responseHeaders = response.headers || {};
-        for (var header in responseHeaders) {
-          markdown += '    ' + header + ': ' + responseHeaders[header] + '\n';
-        }
-        if (response.body) {
-          var responseBody = '    ' +
-            response.body.trim().replace(/\n/g, '\n    ');
-          markdown += '    \n' + responseBody + '\n';
-        }
-        markdown += '\n';
         // TODO Document all unique possible status codes?
         // TODO Document all request parameters?
       }
