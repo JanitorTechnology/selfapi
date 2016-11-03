@@ -205,7 +205,7 @@ tests.push({
 
   test: function (port, callback) {
 
-    // Keep track of.
+    // Count how many times each function gets called.
     var beforeTestsCalled = 0;
     var afterTestsCalled = 0;
     var handlerCalled = 0;
@@ -237,7 +237,7 @@ tests.push({
 
     // Add a basic request handler.
     api.get({
-      title: 'Perform an action',
+      title: 'Acknowledge',
       handler: function (request, response) {
         if (beforeTestsCalled < 1) {
           callback(new Error('beforeTests() should be called'));
@@ -327,9 +327,9 @@ var unfinishedTests = tests.length;
 
 function reportTest (test, error) {
   if (!error) {
-    console.log('[OK]', test.title);
+    console.log('[ok]', test.title);
   } else {
-    console.error('[FAIL]', test.title);
+    console.error('[fail]', test.title);
     console.error.apply(console,
       error.stack ? [ error.stack ] : [ 'Error:', error ]);
   }

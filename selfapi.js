@@ -444,17 +444,20 @@ API.prototype = {
         });
       });
 
-      // If a request takes longer than 10 seconds, consider it failed.
-      var timeout = setTimeout(function () {
-        request.abort();
+      request.on('error', function (error) {
         results.failed.push({
           request: exampleRequest,
           expectedResponse: exampleResponse,
           actualResponse: {
-            error: 'timed out'
+            error: error.message || String(error)
           }
         });
         maybeFinish();
+      });
+
+      // Abort requests that take longer than 10 seconds.
+      var timeout = setTimeout(function () {
+        request.emit('error', new Error('timed out'));
       }, 10000);
 
       if ('body' in exampleRequest) {
