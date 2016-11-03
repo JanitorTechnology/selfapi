@@ -387,6 +387,13 @@ API.prototype = {
         requestOptions.headers = exampleRequest.headers;
       }
 
+      var summary = {
+        handler: handler.title || '(no title)',
+        method: requestOptions.method,
+        uri: requestOptions.path,
+        request: exampleRequest
+      };
+
       var request = client.request(requestOptions, function (response) {
         var success = true;
 
@@ -422,16 +429,14 @@ API.prototype = {
             success = false;
           }
           if (success) {
-            results.passed.push(example);
+            summary.response = exampleResponse;
+            results.passed.push(summary);
             maybeFinish();
             return;
           }
-          var summary = {
-            request: exampleRequest,
-            expectedResponse: exampleResponse,
-            actualResponse: {
-              status: response.statusCode
-            }
+          summary.expectedResponse = exampleResponse;
+          summary.actualResponse = {
+            status: response.statusCode
           };
           if (expectedHeaders !== null) {
             summary.actualResponse.headers = response.headers;
@@ -445,13 +450,11 @@ API.prototype = {
       });
 
       request.on('error', function (error) {
-        results.failed.push({
-          request: exampleRequest,
-          expectedResponse: exampleResponse,
-          actualResponse: {
-            error: error.message || String(error)
-          }
-        });
+        summary.expectedResponse = exampleResponse;
+        summary.actualResponse = {
+          error: error.message || String(error)
+        };
+        results.failed.push(summary);
         maybeFinish();
       });
 
