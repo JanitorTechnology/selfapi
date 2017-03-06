@@ -211,8 +211,8 @@ var items = selfapi({
 ```
 
 For more examples of how to use Self API, please have a look at the
-[tests](https://github.com/jankeromnes/selfapi/blob/master/tests.js).
+[tests](https://github.com/janitortechnology/selfapi/blob/master/tests.js).
 
 ## License
 
-[MIT](https://github.com/jankeromnes/selfapi/blob/master/LICENSE)
+[MIT](https://github.com/janitortechnology/selfapi/blob/master/LICENSE)
