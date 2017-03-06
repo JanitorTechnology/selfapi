@@ -276,7 +276,7 @@ API.prototype = {
       console.log('Results: ' + results.passed.length + '/' + results.total +
         ' test' + (results.total === 1 ? '' : 's') + ' passed.');
       if (results.failed.length > 0) {
-        console.error('Failed tests:', JSON.stringify(results.failed, null, 2));
+        console.error('Failed:', JSON.stringify(results.failed, null, 2));
       }
     };
 
