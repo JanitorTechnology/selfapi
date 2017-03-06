@@ -11,9 +11,9 @@
     "self-documenting",
     "self-testing"
   ],
-  "homepage": "https://github.com/jankeromnes/selfapi",
+  "homepage": "https://github.com/janitortechnology/selfapi",
   "bugs": {
-    "url": "https://github.com/jankeromnes/selfapi/issues"
+    "url": "https://github.com/janitortechnology/selfapi/issues"
   },
   "license": "MIT",
   "author": {
@@ -23,7 +23,7 @@
   "main": "selfapi.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jankeromnes/selfapi"
+    "url": "https://github.com/janitortechnology/selfapi"
   },
   "scripts": {
     "test": "node tests.js"
