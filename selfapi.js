@@ -6,11 +6,8 @@ var https = require('https');
 var nodepath = require('path');
 var url = require('url');
 
-
 // Simple, self-documenting and self-testing API system.
-
 function API (parameters) {
-
   // Own API resource prefix (e.g. '/resource').
   this.path = parameters.path || null;
 
@@ -30,12 +27,9 @@ function API (parameters) {
 
   // Own request handlers (handler parameters) by method (e.g. 'post').
   this.handlers = {};
-
 }
 
-
 API.prototype = {
-
   api: selfapi,
 
   methods: ['get', 'post', 'patch', 'put', 'delete'],
@@ -266,7 +260,6 @@ API.prototype = {
 
   // Test the API against its own examples.
   test: function (baseSite, callback) {
-
     baseSite = baseSite || 'http://localhost';
     callback = callback || function (error, results) {
       if (error) {
@@ -487,46 +480,30 @@ API.prototype = {
         callback(error, results);
       }
     }
-
   }
-
 };
 
-
 // Routing shortcuts for supported HTTP methods (e.g. `api.get(…)`).
-
 API.prototype.methods.forEach(function (method) {
-
   API.prototype[method] = function (path, parameters) {
     return this.addHandler(method, path, parameters);
   };
-
 });
 
-
 // Normalize a given API resource path (optionally from a base path).
-
 function normalizePath (path, basePath) {
-
   var joined = nodepath.join(basePath || '/', path || '');
   var normalized = nodepath.normalize(joined);
 
   return (normalized !== '/' ? normalized : null);
-
 }
-
 
 // Detect if `app` is an express-like server.
-
 function isServerApp (app) {
-
   return !!(app && app.use && app.get && app.post && app.put);
-
 }
 
-
 // Try to create a handler exporter function for a given server app.
-
 function getHandlerExporter (app) {
   if (!isServerApp(app)) {
     return null;
@@ -542,11 +519,8 @@ function getHandlerExporter (app) {
   };
 }
 
-
 // Exported `selfapi` function to create an API tree.
-
 function selfapi (/* parent, …overrides, child */) {
-
   // Parent API instance or root server app.
   var parent = null;
 
@@ -608,9 +582,7 @@ function selfapi (/* parent, …overrides, child */) {
   }
 
   return child;
-
 }
 
 selfapi.API = API;
-
 module.exports = selfapi;
