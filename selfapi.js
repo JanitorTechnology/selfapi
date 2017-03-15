@@ -500,7 +500,7 @@ function normalizePath (path, basePath) {
 
 // Detect if `app` is an express-like server.
 function isServerApp (app) {
-  return !!(app && app.use && app.get && app.post && app.put);
+  return !!(app && (app.use || app.handle) && app.get && app.post);
 }
 
 // Try to create a handler exporter function for a given server app.
