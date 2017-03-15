@@ -6,7 +6,7 @@ Works with [express](http://expressjs.com/), [restify](http://restify.com/) and
 [scout camp](https://github.com/espadrine/sc).
 
 Note: This is not a routing engine. You need one of the above to build a working
-API. (Self API just provides an easier way for you to build, document and test
+API. (Self API just provides an easier way for you to develop, document and test
 web APIs.)
 
 
