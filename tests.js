@@ -10,11 +10,9 @@ var selfapi = require('./selfapi');
 var tests = [];
 
 tests.push({
-
   title: 'Pre-existing handlers exported to new parent',
 
   test: function (port, callback) {
-
     // Create a new API without a parent.
     var api = selfapi();
 
@@ -38,17 +36,13 @@ tests.push({
       return;
     }
     callback();
-
   }
-
 });
 
 tests.push({
-
   title: 'Express routing',
 
   test: function (port, callback) {
-
     // Create a new API using Express.
     var app = express();
     var api = selfapi(app, '/api');
@@ -90,13 +84,10 @@ tests.push({
         });
       });
     });
-
   }
-
 });
 
 tests.push({
-
   title: 'Express self-testing',
 
   test: function (port, callback) {
@@ -194,17 +185,13 @@ tests.push({
         callback();
       });
     });
-
   }
-
 });
 
 tests.push({
-
   title: 'Using beforeTests() and afterTests()',
 
   test: function (port, callback) {
-
     // Count how many times each function gets called.
     var beforeTestsCalled = 0;
     var afterTestsCalled = 0;
@@ -275,9 +262,7 @@ tests.push({
         callback();
       });
     });
-
   }
-
 });
 
 /*
