@@ -91,7 +91,6 @@ tests.push({
   title: 'Express self-testing',
 
   test: function (port, callback) {
-
     // Create a new API using Express.
     var app = express();
     var api = selfapi(app, '/api', 'Action API v1');
@@ -265,16 +264,67 @@ tests.push({
   }
 });
 
+tests.push({
+  title: 'Unique anchors in HTML export',
+
+  test: function (port, callback) {
+    // Create a new API without a parent.
+    var api = selfapi();
+
+    // Add a few request handlers.
+    api.post({
+      title: 'Post something',
+      handler: function (request, response) { response.end('ok'); }
+    });
+    api.post('/:thing', {
+      title: 'Post something else',
+      handler: function (request, response) { response.end('ok'); }
+    });
+    api.post('/different/:thing', {
+      title: 'Post something else',
+      handler: function (request, response) { response.end('ok'); }
+    });
+    api.post('/other/:thing', {
+      title: 'Post something else',
+      handler: function (request, response) { response.end('ok'); }
+    });
+    api.delete({
+      title: '--Delete something! (☠)',
+      handler: function (request, response) { response.end('ok'); }
+    });
+
+    var html = api.toHTML('/api');
+    var patterns = [
+      'id="post-something"',
+      'id="post-something-else"',
+      'id="post-something-else-2"',
+      'id="post-something-else-3"',
+      'id="delete-something"'
+    ];
+
+    for (var i = 0; i < patterns.length; i++) {
+      var pattern = patterns[i];
+      var results = html.match(new RegExp(pattern, 'g'));
+      if (!results || results.length !== 1) {
+        var occurrences = results ? results.length : 0;
+        callback(new Error('Expected exactly 1 \'' + pattern + '\' but found ' +
+          occurrences + ' in:\n' + html));
+        return;
+      }
+    }
+
+    callback();
+  }
+});
+
 /*
 tests.push({
-
   title: '',
 
   test: function (port, callback) {
-    // test something
+    // test some things
     // callback(error);
   }
-
 });
 */
 

@@ -121,12 +121,31 @@ API.prototype = {
   },
 
   // Export API documentation as HTML.
-  toHTML: function (basePath) {
+  toHTML: function (basePath, anchors) {
     var fullPath = normalizePath(this.path, basePath) || '/';
+
+    anchors = anchors || [];
+    function getAnchor (title) {
+      var anchor = String(title).toLowerCase()
+        .replace(/[\s\-]+/g, ' ')
+        .replace(/[^a-z0-9 ]/g, '')
+        .trim()
+        .replace(/ /g, '-');
+      if (anchors.indexOf(anchor) > -1) {
+        var i = 2;
+        while (anchors.indexOf(anchor + '-' + i) > -1) {
+          i++;
+        }
+        anchor += '-' + i;
+      }
+      anchors.push(anchor);
+      return anchor;
+    }
 
     var html = '';
     if (this.title) {
-      html += '<h1>' + this.title + '</h1>\n';
+      html +=
+        '<h1 id="' + getAnchor(this.title) + '">' + this.title + '</h1>\n';
     }
     if (this.description) {
       html += '<p>' + this.description + '</p>\n';
@@ -135,7 +154,8 @@ API.prototype = {
     // Export own request handlers.
     for (var method in this.handlers) {
       var handler = this.handlers[method];
-      html += '<h2>' + (handler.title || '(no title)') + '</h2>\n';
+      var title = handler.title || '(no title)';
+      html += '<h2 id="' + getAnchor(title) + '">' + title + '</h2>\n';
       html += '<pre>' + method.toUpperCase() + ' ' + fullPath + '</pre>\n';
       if (handler.description) {
         html += '<p>' + handler.description + '</p>\n';
@@ -181,7 +201,7 @@ API.prototype = {
     // Export children's request handlers recursively.
     for (var path in this.children) {
       var child = this.children[path];
-      html += child.toHTML(fullPath);
+      html += child.toHTML(fullPath, anchors);
     }
 
     return html;
