@@ -314,6 +314,7 @@ function reportTest (test, error) {
   if (!error) {
     console.log('[ok]', test.title);
   } else {
+    process.exitCode = 1;
     console.error('[fail]', test.title);
     console.error.apply(console,
       error.stack ? [ error.stack ] : [ 'Error:', error ]);
