@@ -188,35 +188,35 @@ tests.push({
 });
 
 tests.push({
-  title: 'Using beforeTests() and afterTests()',
+  title: 'Using beforeEachTest() and afterEachTest()',
 
   test: function (port, callback) {
     // Count how many times each function gets called.
-    var beforeTestsCalled = 0;
-    var afterTestsCalled = 0;
+    var beforeEachTestCalled = 0;
+    var afterEachTestCalled = 0;
     var handlerCalled = 0;
 
     // Create a new API using Express, with custom test setup functions.
     var app = express();
     var api = selfapi(app, '/api', {
-      beforeTests: function (next) {
-        if (beforeTestsCalled > 0) {
-          callback(new Error('beforeTests() should be called only once'));
+      beforeEachTest: function (next) {
+        if (beforeEachTestCalled > 0) {
+          callback(new Error('beforeEachTest() should be called only once'));
           return;
         }
-        if (handlerCalled > 0 || afterTestsCalled > 0) {
-          callback(new Error('beforeTests() should be called first'));
+        if (handlerCalled > 0 || afterEachTestCalled > 0) {
+          callback(new Error('beforeEachTest() should be called first'));
           return;
         }
-        beforeTestsCalled++;
+        beforeEachTestCalled++;
         next();
       },
-      afterTests: function (next) {
-        if (afterTestsCalled > 0) {
-          callback(new Error('afterTests() should be called only once'));
+      afterEachTest: function (next) {
+        if (afterEachTestCalled > 0) {
+          callback(new Error('afterEachTest() should be called only once'));
           return;
         }
-        afterTestsCalled++;
+        afterEachTestCalled++;
         next();
       }
     });
@@ -225,12 +225,12 @@ tests.push({
     api.get({
       title: 'Acknowledge',
       handler: function (request, response) {
-        if (beforeTestsCalled < 1) {
-          callback(new Error('beforeTests() should be called'));
+        if (beforeEachTestCalled < 1) {
+          callback(new Error('beforeEachTest() should be called'));
           return;
         }
-        if (afterTestsCalled > 0) {
-          callback(new Error('afterTests() should be called last'));
+        if (afterEachTestCalled > 0) {
+          callback(new Error('afterEachTest() should be called last'));
           return;
         }
         handlerCalled++;
@@ -254,8 +254,8 @@ tests.push({
           callback(new Error('Request handler should be called'));
           return;
         }
-        if (afterTestsCalled < 1) {
-          callback(new Error('afterTests() should be called'));
+        if (afterEachTestCalled < 1) {
+          callback(new Error('afterEachTest() should be called'));
           return;
         }
         callback();
