@@ -137,7 +137,7 @@ tests.push({
           urlParameters: { action: 'coffee' }
         },
         response: {
-          // This example should fail, because the handler responds with 500:
+          // This example should fail, because the handler responds with 500.
           status: 418,
           body: JSON.stringify({ error: 'I\'m a teapot' })
         }

@@ -120,6 +120,253 @@ API.prototype = {
     }
   },
 
+  // Export all request handler examples as self-test functions.
+  exportAllTests: function (baseUrl, callback) {
+    var self = this;
+    var tests = [];
+
+    // Export own request handler examples as test functions.
+    for (var method in self.handlers) {
+      var handler = self.handlers[method];
+      handler.examples.forEach(function (example) {
+        var test =
+          self.testHandlerExample.bind(self, baseUrl, method, handler, example);
+        tests.push(test);
+      });
+    }
+
+    // Don't hang when there are no children.
+    var pendingChildren = Object.keys(self.children).length;
+    if (pendingChildren === 0) {
+      callback(tests);
+      return;
+    }
+
+    // Export children's request handler test functions recursively.
+    var childBaseUrl = url.parse(String(baseUrl));
+    childBaseUrl.pathname = normalizePath(self.path, childBaseUrl.pathname);
+    childBaseUrl = url.format(childBaseUrl);
+    for (var path in self.children) {
+      self.children[path].exportAllTests(childBaseUrl, function (childTests) {
+        tests = tests.concat(childTests);
+        pendingChildren--;
+        if (pendingChildren === 0) {
+          callback(tests);
+        }
+      });
+    }
+  },
+
+  // Test the API using its own request/response examples.
+  test: function (baseUrl, callback) {
+    callback = callback || function (error, results) {
+      if (error) {
+        console.error.apply(console,
+          error.stack ? [ error.stack ] : [ 'Error:', error ]);
+      }
+      var total = results.passed.length + results.failed.length;
+      console.log('Results: ' + results.passed.length + '/' + total + ' test' +
+        (total === 1 ? '' : 's') + ' passed.');
+      if (results.failed.length > 0) {
+        console.error('Failed:', JSON.stringify(results.failed, null, 2));
+      }
+    };
+
+    var results = {
+      failed: [],
+      passed: []
+    };
+
+    this.exportAllTests(baseUrl, function runNextTest (tests) {
+      if (tests.length === 0) {
+        callback(null, results);
+        return;
+      }
+
+      var i = Math.floor(Math.random() * tests.length);
+      var test = tests.splice(i, 1)[0];
+      test(function (error, testResults) {
+        if (testResults) {
+          results.failed = results.failed.concat(testResults.failed);
+          results.passed = results.passed.concat(testResults.passed);
+        }
+        if (error) {
+          callback(error, results);
+          return;
+        }
+        runNextTest(tests);
+      });
+    });
+  },
+
+  // Test a request handler against one of its own request/response examples.
+  testHandlerExample: function (baseUrl, method, handler, example, callback) {
+    baseUrl = baseUrl || 'http://localhost';
+
+    var client = null;
+    var results = {
+      failed: [],
+      passed: []
+    };
+    var self = this;
+    var testUrl = url.parse(String(baseUrl));
+    testUrl.pathname = normalizePath(self.path, testUrl.pathname);
+    testUrl = url.parse(url.format(testUrl));
+    switch (testUrl.protocol) {
+      case 'https:':
+        client = https;
+        break;
+      case 'http:':
+        client = http;
+        break;
+      default:
+        var error = new Error('Invalid base site: ' + baseUrl +
+          ' (should start with "http://" or "https://")');
+        callback(error, results);
+        return;
+    }
+
+    var beforeEachTest = self.beforeEachTest || function (next) { next(); };
+    if (typeof beforeEachTest !== 'function') {
+      callback(new Error('"beforeEachTest" should be a function'), results);
+      return;
+    }
+
+    var afterEachTest = self.afterEachTest || function (next) { next(); };
+    if (typeof afterEachTest !== 'function') {
+      callback(new Error('"afterEachTest" should be a function'), results);
+      return;
+    }
+
+    var requestOptions = {
+      hostname: testUrl.hostname,
+      port: testUrl.port,
+      path: testUrl.pathname,
+      method: method
+    };
+
+    var exampleRequest = example.request || {};
+    var exampleResponse = example.response || {};
+
+    if (exampleRequest.urlParameters) {
+      for (var urlParameter in exampleRequest.urlParameters) {
+        var regex = new RegExp(':' + urlParameter, 'g');
+        var urlValue = exampleRequest.urlParameters[urlParameter];
+        requestOptions.path = requestOptions.path.replace(regex, urlValue);
+      }
+    }
+
+    if (exampleRequest.queryParameters) {
+      var queryPairs = [];
+      for (var queryParameter in exampleRequest.queryParameters) {
+        var queryValue = exampleRequest.queryParameters[queryParameter];
+        queryPairs.push(encodeURIComponent(queryParameter) +
+          (queryValue ? '=' + encodeURIComponent(queryValue) : ''));
+      }
+      requestOptions.path += '?' + queryPairs.join('&');
+    }
+
+    if (exampleRequest.headers) {
+      requestOptions.headers = exampleRequest.headers;
+    }
+
+    var summary = {
+      handler: handler.title || '(no title)',
+      method: requestOptions.method,
+      uri: requestOptions.path,
+      request: exampleRequest
+    };
+
+    beforeEachTest(function (error) {
+      if (error) {
+        callback(error, results);
+        return;
+      }
+
+      var request = client.request(requestOptions, function (response) {
+        var success = true;
+
+        var expectedStatusCode = exampleResponse.status || 200;
+        if (response.statusCode !== expectedStatusCode) {
+          success = false;
+        }
+
+        var expectedHeaders = null;
+        if (exampleResponse.headers) {
+          expectedHeaders = exampleResponse.headers;
+          for (var header in expectedHeaders) {
+            if (response[header.toLowerCase()] !== expectedHeaders[header]) {
+              success = false;
+              break;
+            }
+          }
+        }
+
+        var expectedBody = null;
+        if ('body' in exampleResponse) {
+          expectedBody = exampleResponse.body.trim();
+        }
+
+        var body = '';
+        response.on('data', function (chunk) {
+          body += String(chunk);
+        });
+
+        response.on('end', function () {
+          clearTimeout(timeout);
+          body = body.trim();
+          if (expectedBody !== null && body !== expectedBody) {
+            success = false;
+          }
+          if (success) {
+            summary.response = exampleResponse;
+            results.passed.push(summary);
+            afterEachTest(function (error) {
+              callback(error, results);
+            });
+            return;
+          }
+          summary.expectedResponse = exampleResponse;
+          summary.actualResponse = {
+            status: response.statusCode
+          };
+          if (expectedHeaders !== null) {
+            summary.actualResponse.headers = response.headers;
+          }
+          if (expectedBody !== null) {
+            summary.actualResponse.body = body;
+          }
+          results.failed.push(summary);
+          afterEachTest(function (error) {
+            callback(error, results);
+          });
+        });
+      });
+
+      request.on('error', function (error) {
+        clearTimeout(timeout);
+        summary.expectedResponse = exampleResponse;
+        summary.actualResponse = {
+          error: error.message || String(error)
+        };
+        results.failed.push(summary);
+        afterEachTest(function (error) {
+          callback(error, results);
+        });
+      });
+
+      // Abort requests that take longer than 10 seconds.
+      var timeout = setTimeout(function () {
+        request.emit('error', new Error('timed out'));
+      }, 10000);
+
+      if ('body' in exampleRequest) {
+        request.write(exampleRequest.body);
+      }
+      request.end();
+    });
+  },
+
   // Export API documentation as HTML.
   toHTML: function (basePath, anchors) {
     var fullPath = normalizePath(this.path, basePath) || '/';
@@ -276,221 +523,6 @@ API.prototype = {
     }
 
     return markdown;
-  },
-
-  // Test the API against its own examples.
-  test: function (baseSite, callback) {
-    baseSite = baseSite || 'http://localhost';
-    callback = callback || function (error, results) {
-      if (error) {
-        console.error.apply(console,
-          error.stack ? [ error.stack ] : [ 'Error:', error ]);
-      }
-      console.log('Results: ' + results.passed.length + '/' + results.total +
-        ' test' + (results.total === 1 ? '' : 's') + ' passed.');
-      if (results.failed.length > 0) {
-        console.error('Failed:', JSON.stringify(results.failed, null, 2));
-      }
-    };
-
-    var client = null;
-    var pendingChildren = 0;
-    var results = {
-      failed: [],
-      passed: [],
-      total: 0
-    };
-    var self = this;
-    var testUrl = url.parse(String(baseSite));
-    testUrl.pathname = normalizePath(self.path, testUrl.pathname);
-    testUrl = url.parse(url.format(testUrl));
-
-    switch (testUrl.protocol) {
-      case 'https:':
-        client = https;
-        break;
-      case 'http:':
-        client = http;
-        break;
-      default:
-        var error = new Error('Invalid base site: ' + baseSite +
-          ' (should start with "http://" or "https://")');
-        callback(error, results);
-        return;
-    }
-
-    var beforeEachTest = self.beforeEachTest || function (next) { next(); };
-    if (typeof beforeEachTest !== 'function') {
-      callback(new Error('"beforeEachTest" should be a function'), results);
-      return;
-    }
-
-    var afterEachTest = self.afterEachTest || function (next) { next(); };
-    if (typeof afterEachTest !== 'function') {
-      callback(new Error('"afterEachTest" should be a function'), results);
-      return;
-    }
-
-    // Test own request handlers.
-    for (var method in self.handlers) {
-      var handler = self.handlers[method];
-      // Copy the array of examples, and test them in random order.
-      var examples = handler.examples.slice();
-      results.total += examples.length;
-      while (examples.length > 0) {
-        var i = Math.floor(Math.random() * examples.length);
-        var example = examples.splice(i, 1)[0];
-        testHandlerExample(method, handler, example);
-      }
-    }
-
-    // Test children's request handlers recursively.
-    for (var path in self.children) {
-      pendingChildren++;
-      self.children[path].test(testUrl.href, function (error, childResults) {
-        if (childResults) {
-          results.total += childResults.total;
-          results.failed = results.failed.concat(childResults.failed);
-          results.passed = results.passed.concat(childResults.passed);
-        }
-        if (error) {
-          callback(error, results);
-          return;
-        }
-        pendingChildren--;
-        next();
-      });
-    }
-
-    // Don't hang when there are no tests (examples) or no children.
-    next();
-
-    // Test a request handler against one of its examples.
-    function testHandlerExample (method, handler, example) {
-      var requestOptions = {
-        hostname: testUrl.hostname,
-        port: testUrl.port,
-        path: testUrl.pathname,
-        method: method
-      };
-
-      var exampleRequest = example.request || {};
-      var exampleResponse = example.response || {};
-
-      if (exampleRequest.urlParameters) {
-        for (var urlParameter in exampleRequest.urlParameters) {
-          var regex = new RegExp(':' + urlParameter, 'g');
-          var urlValue = exampleRequest.urlParameters[urlParameter];
-          requestOptions.path = requestOptions.path.replace(regex, urlValue);
-        }
-      }
-
-      if (exampleRequest.queryParameters) {
-        var queryPairs = [];
-        for (var queryParameter in exampleRequest.queryParameters) {
-          var queryValue = exampleRequest.queryParameters[queryParameter];
-          queryPairs.push(encodeURIComponent(queryParameter) +
-            (queryValue ? '=' + encodeURIComponent(queryValue) : ''));
-        }
-        requestOptions.path += '?' + queryPairs.join('&');
-      }
-
-      if (exampleRequest.headers) {
-        requestOptions.headers = exampleRequest.headers;
-      }
-
-      var summary = {
-        handler: handler.title || '(no title)',
-        method: requestOptions.method,
-        uri: requestOptions.path,
-        request: exampleRequest
-      };
-
-      beforeEachTest(function () {
-        var request = client.request(requestOptions, function (response) {
-          var success = true;
-
-          var expectedStatusCode = exampleResponse.status || 200;
-          if (response.statusCode !== expectedStatusCode) {
-            success = false;
-          }
-
-          var expectedHeaders = null;
-          if (exampleResponse.headers) {
-            expectedHeaders = exampleResponse.headers;
-            for (var header in expectedHeaders) {
-              if (response[header.toLowerCase()] !== expectedHeaders[header]) {
-                success = false;
-                break;
-              }
-            }
-          }
-
-          var expectedBody = null;
-          if ('body' in exampleResponse) {
-            expectedBody = exampleResponse.body.trim();
-          }
-
-          var body = '';
-          response.on('data', function (chunk) {
-            body += String(chunk);
-          });
-
-          response.on('end', function () {
-            clearTimeout(timeout);
-            if (expectedBody !== null && body.trim() !== expectedBody) {
-              success = false;
-            }
-            if (success) {
-              summary.response = exampleResponse;
-              results.passed.push(summary);
-              afterEachTest(next);
-              return;
-            }
-            summary.expectedResponse = exampleResponse;
-            summary.actualResponse = {
-              status: response.statusCode
-            };
-            if (expectedHeaders !== null) {
-              summary.actualResponse.headers = response.headers;
-            }
-            if (expectedBody !== null) {
-              summary.actualResponse.body = body;
-            }
-            results.failed.push(summary);
-            afterEachTest(next);
-          });
-        });
-
-        request.on('error', function (error) {
-          clearTimeout(timeout);
-          summary.expectedResponse = exampleResponse;
-          summary.actualResponse = {
-            error: error.message || String(error)
-          };
-          results.failed.push(summary);
-          afterEachTest(next);
-        });
-
-        // Abort requests that take longer than 10 seconds.
-        var timeout = setTimeout(function () {
-          request.emit('error', new Error('timed out'));
-        }, 10000);
-
-        if ('body' in exampleRequest) {
-          request.write(exampleRequest.body);
-        }
-        request.end();
-      });
-    }
-
-    // Wait for all tests to complete before finishing this test run.
-    function next () {
-      var completed = results.failed.length + results.passed.length;
-      if (completed === results.total && pendingChildren === 0) {
-        callback(null, results);
-      }
-    }
   }
 };
 
