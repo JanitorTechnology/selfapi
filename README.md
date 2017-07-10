@@ -118,7 +118,7 @@ Create a new item and add it to our collection.
 
 … and self-test, using its own examples:
 
-```bash
+```markdown
 > api.test('http://localhost:8080');
 Results: 2/2 tests passed.
 ```
@@ -178,10 +178,12 @@ info:
 api.get({
   title: 'Show API version',
   description: 'Show the latest API version currently supported.',
+
   handler: function (request, response) {
     // Here you can do anything you would in `app.get('/api/items', …)`, e.g.
     response.json({ version: 'v1.0' });
   },
+
   examples: [{
     response: {
       body: '{"version":"v1.0"}'
