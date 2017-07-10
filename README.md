@@ -14,13 +14,13 @@ web APIs.)
 
 Install it:
 
-```
+```bash
 npm install selfapi
 ```
 
 Use it:
 
-```
+```js
 var selfapi = require('selfapi');
 
 // API root resource, mounted at '/api' on your server app:
@@ -29,9 +29,11 @@ var api = selfapi(app, '/api', 'My API');
 api.get({
   title: 'Show API version',
   description: 'Show the latest API version currently supported.',
+
   handler: function (request, response) {
     response.end('v1.0');
   },
+
   examples: [{
     response: {
       body: 'v1.0'
@@ -45,6 +47,7 @@ var items = api.api('/items', 'Items');
 items.post({
   title: 'Add a new item',
   description: 'Create a new item and add it to our collection.',
+
   handler: function (request, response) {
     var json = '';
     request.on('data', function (chunk) {
@@ -56,6 +59,7 @@ items.post({
       response.end(JSON.stringify({ status: 'Created', item: item }));
     });
   },
+
   examples: [{
     request: {
       body: '{"name":"My Item"}'
@@ -70,7 +74,7 @@ items.post({
 
 Your API can self-document:
 
-```
+```markdown
 > console.log(api.toMarkdown());
 # My API
 
@@ -114,14 +118,14 @@ Create a new item and add it to our collection.
 
 … and self-test, using its own examples:
 
-```
+```bash
 > api.test('http://localhost:8080');
 Results: 2/2 tests passed.
 ```
 
 Note: You can also document and test each API resource individually, but remember to provide the correct base path like so:
 
-```
+```markdown
 > console.log(items.toMarkdown('/api'))
 ## Add a new item
 
@@ -138,7 +142,7 @@ Results: 1/1 test passed.
 
 Create your API using [express](http://expressjs.com/):
 
-```
+```js
 var express = require('express');
 var selfapi = require('selfapi');
 
@@ -169,7 +173,7 @@ var api = selfapi(router, '/', 'My API');
 Write request handlers the same way you would in express, just with a bit more
 info:
 
-```
+```js
 // This will register some metadata, and export the handler function to express.
 api.get({
   title: 'Show API version',
@@ -193,7 +197,7 @@ Note: They're basically just a common prefix for similar request handlers
 [Router](http://expressjs.com/en/4x/api.html#router)), but they'll create
 dedicated documentation sections, and can be tested individually.
 
-```
+```js
 // Create an API sub-resource, mounted at '/api/items' on your server app:
 var items = api.api('/items', 'Items');
 
