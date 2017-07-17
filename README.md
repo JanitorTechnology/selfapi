@@ -1,7 +1,7 @@
 # Self API
 
 [![Greenkeeper badge](https://img.shields.io/badge/greenkeeper-enabled-brightgreen.svg)](https://greenkeeper.io/)
-[![NPM version badge](https://img.shields.io/npm/v/webtorrent.svg)](https://www.npmjs.com/package/selfapi)
+[![NPM version badge](https://img.shields.io/npm/v/selfapi.svg)](https://www.npmjs.com/package/selfapi)
 [![Travis status badge](https://img.shields.io/travis/JanitorTechnology/selfapi.svg)](https://travis-ci.org/JanitorTechnology/selfapi)
 
 Simple, self-documenting and self-testing API system for Node.js.
