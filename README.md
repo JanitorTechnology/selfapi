@@ -1,6 +1,6 @@
 # Self API
 
-[![Greenkeeper badge](https://badges.greenkeeper.io/JanitorTechnology/selfapi.svg)](https://greenkeeper.io/)
+[![Greenkeeper badge](https://img.shields.io/badge/greenkeeper-enabled-brightgreen.svg)](https://greenkeeper.io/)
 
 Simple, self-documenting and self-testing API system for Node.js.
 
