@@ -1,5 +1,7 @@
 # Self API
 
+[![Greenkeeper badge](https://img.shields.io/badge/greenkeeper-enabled-brightgreen.svg)](https://greenkeeper.io/)
+
 Simple, self-documenting and self-testing API system for Node.js.
 
 Works with [express](http://expressjs.com/), [restify](http://restify.com/) and
