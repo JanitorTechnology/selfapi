@@ -421,6 +421,15 @@ API.prototype = {
         var request = example.request || {};
         if (request.headers || request.body) {
           html += '<h3>Input</h3>\n<pre>';
+
+          // Format example-specific URL
+          var exampleURL = method.toUpperCase() + ' ' + fullPath;
+          var requestParameters = request.urlParameters || {};
+          for (var requestParam in requestParameters) {
+            exampleURL = exampleURL.replace(':' + requestParam, requestParameters[requestParam]);
+          }
+          html += exampleURL + '\n';
+
           var requestHeaders = request.headers || {};
           for (var header in requestHeaders) {
             html += header + ': ' + requestHeaders[header] + '\n';
@@ -488,6 +497,15 @@ API.prototype = {
         var request = example.request || {};
         if (request.headers || request.body) {
           markdown += '### Example input:\n\n';
+
+          // Format example-specific URL
+          var exampleURL = '    ' + method.toUpperCase() + ' ' + fullPath;
+          var requestParameters = request.urlParameters || {};
+          for (var requestParam in requestParameters) {
+            exampleURL = exampleURL.replace(':' + requestParam, requestParameters[requestParam]);
+          }
+          markdown += exampleURL + '\n';
+
           var requestHeaders = request.headers || {};
           for (var header in requestHeaders) {
             markdown += '    ' + header + ': ' + requestHeaders[header] + '\n';
