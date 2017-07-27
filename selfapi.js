@@ -402,7 +402,7 @@ API.prototype = {
         '<h1 id="' + getAnchor(this.title) + '">' + this.title + '</h1>\n';
     }
     if (this.description) {
-      html += '<p>' + this.description + '</p>\n';
+      html += '<p>' + this.description.replace(/\n/g, '<br/>') + '</p>\n';
     }
 
     // Export own request handlers.
@@ -412,7 +412,7 @@ API.prototype = {
       html += '<h2 id="' + getAnchor(title) + '">' + title + '</h2>\n';
       html += '<pre>' + method.toUpperCase() + ' ' + fullPath + '</pre>\n';
       if (handler.description) {
-        html += '<p>' + handler.description + '</p>\n';
+        html += '<p>' + handler.description.replace(/\n/g, '<br/>') + '</p>\n';
       }
 
       if (handler.examples && handler.examples.length > 0) {
