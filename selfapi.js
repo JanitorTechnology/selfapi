@@ -580,8 +580,8 @@ function getHandlerExporter (app) {
   // `app` is an express-like server app.
   return function (method, path, parameters) {
     // Support restify.
-    if (method === 'delete' && ('del' in app)) {
-      method = 'del';
+    if (method === 'del' && ('delete' in app)) {
+      method = 'delete';
     }
     app[method](path, parameters.handler);
   };
