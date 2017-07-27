@@ -6,6 +6,13 @@ var https = require('https');
 var nodepath = require('path');
 var url = require('url');
 
+function ensureSerialized(strOrObject, spaces=null) {
+  if (strOrObject instanceof Object) {
+    return JSON.stringify(strOrObject, null, spaces);
+  }
+  return strOrObject;
+}
+
 // Simple, self-documenting and self-testing API system.
 function API (parameters) {
   // Own API resource prefix (e.g. '/resource').
@@ -304,7 +311,7 @@ API.prototype = {
 
         var expectedBody = null;
         if ('body' in exampleResponse) {
-          expectedBody = exampleResponse.body.trim();
+          expectedBody = ensureSerialized(exampleResponse.body).trim();
         }
 
         var body = '';
@@ -419,7 +426,7 @@ API.prototype = {
             html += header + ': ' + requestHeaders[header] + '\n';
           }
           if (request.body) {
-            html += '\n' + request.body.trim() + '\n';
+            html += '\n' + ensureSerialized(request.body, 4).trim() + '\n';
           }
           html += '</pre>\n';
         }
@@ -436,7 +443,7 @@ API.prototype = {
             html += header + ': ' + responseHeaders[header] + '\n';
           }
           if (response.body) {
-            html += '\n' + response.body.trim() + '\n';
+            html += '\n' + ensureSerialized(response.body, 4).trim() + '\n';
           }
           html += '</pre>\n';
         }
@@ -487,7 +494,7 @@ API.prototype = {
           }
           if (request.body) {
             var requestBody = '    ' +
-              request.body.trim().replace(/\n/g, '\n    ');
+              ensureSerialized(request.body, 4).trim().replace(/\n/g, '\n    ');
             markdown += '    \n' + requestBody + '\n';
           }
           markdown += '\n';
@@ -506,7 +513,7 @@ API.prototype = {
           }
           if (response.body) {
             var responseBody = '    ' +
-              response.body.trim().replace(/\n/g, '\n    ');
+              ensureSerialized(response.body, 4).trim().replace(/\n/g, '\n    ');
             markdown += '    \n' + responseBody + '\n';
           }
           markdown += '\n';
