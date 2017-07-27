@@ -419,7 +419,7 @@ API.prototype = {
         var example = handler.examples[0];
 
         var request = example.request || {};
-        if (request.headers || request.body) {
+        if (request.headers || request.body || request.urlParameters) {
           html += '<h3>Input</h3>\n<pre>';
 
           // Format example-specific URL
@@ -495,7 +495,7 @@ API.prototype = {
         var example = handler.examples[0];
 
         var request = example.request || {};
-        if (request.headers || request.body) {
+        if (request.headers || request.body || request.urlParameters) {
           markdown += '### Example input:\n\n';
 
           // Format example-specific URL
