@@ -374,6 +374,24 @@ API.prototype = {
     });
   },
 
+  // Build index routes.
+  buildIndexRoutes: function (basePath) {
+      var fullPath = normalizePath(this.path, basePath) || '/';
+      this.get({
+          title: 'Index',
+          handler: (request, response) => {
+              var routes = {};
+              Object.keys(this.children).forEach(child => {
+                  if (child == "null") {
+                      return;
+                  }
+                  routes[child.replace(/^\//, '')] = nodepath.join(fullPath, child);
+              });
+              response.json(routes);
+          }
+      })
+  },
+
   // Export API documentation as HTML.
   toHTML: function (basePath, anchors) {
     var fullPath = normalizePath(this.path, basePath) || '/';
