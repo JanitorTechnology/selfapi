@@ -373,21 +373,18 @@ API.prototype = {
   },
 
   // Build index routes.
-  buildIndexRoutes: function (basePath) {
+  toAPIIndex: function (basePath) {
     var fullPath = normalizePath(this.path, basePath) || '/';
-    this.get({
-      title: 'Index',
-      handler: (request, response) => {
-        var routes = {};
-        Object.keys(this.children).forEach(function (child) {
-          if (child == "null") {
-            return;
-          }
-          routes[child.replace(/^\//, '')] = nodepath.join(fullPath, child);
-        });
-        response.json(routes);
-      }
-    })
+    return function () {
+      var routes = {};
+      Object.keys(this.children).forEach(function (child) {
+        if (child == "null") {
+          return;
+        }
+        routes[child.replace(/^\//, '')] = nodepath.join(fullPath, child);
+      });
+      return routes;
+    };
   },
 
   // Export API documentation as HTML.
