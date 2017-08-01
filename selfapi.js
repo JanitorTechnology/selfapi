@@ -6,12 +6,10 @@ var https = require('https');
 var nodepath = require('path');
 var url = require('url');
 
-function ensureSerialized(strOrObject, spaces=null) {
-  if (strOrObject instanceof Object) {
-    return JSON.stringify(strOrObject, null, spaces);
-  }
-  return strOrObject;
-}
+var options = {
+    jsonStringifyReplacer: null,
+    jsonStringifySpaces: 2
+};
 
 // Simple, self-documenting and self-testing API system.
 function API (parameters) {
@@ -311,7 +309,7 @@ API.prototype = {
 
         var expectedBody = null;
         if ('body' in exampleResponse) {
-          expectedBody = ensureSerialized(exampleResponse.body).trim();
+          expectedBody = jsonStringify(exampleResponse.body).trim();
         }
 
         var body = '';
@@ -376,20 +374,20 @@ API.prototype = {
 
   // Build index routes.
   buildIndexRoutes: function (basePath) {
-      var fullPath = normalizePath(this.path, basePath) || '/';
-      this.get({
-          title: 'Index',
-          handler: (request, response) => {
-              var routes = {};
-              Object.keys(this.children).forEach(child => {
-                  if (child == "null") {
-                      return;
-                  }
-                  routes[child.replace(/^\//, '')] = nodepath.join(fullPath, child);
-              });
-              response.json(routes);
+    var fullPath = normalizePath(this.path, basePath) || '/';
+    this.get({
+      title: 'Index',
+      handler: (request, response) => {
+        var routes = {};
+        Object.keys(this.children).forEach(function (child) {
+          if (child == "null") {
+            return;
           }
-      })
+          routes[child.replace(/^\//, '')] = nodepath.join(fullPath, child);
+        });
+        response.json(routes);
+      }
+    })
   },
 
   // Export API documentation as HTML.
@@ -420,7 +418,7 @@ API.prototype = {
         '<h1 id="' + getAnchor(this.title) + '">' + this.title + '</h1>\n';
     }
     if (this.description) {
-      html += '<p>' + this.description.replace(/\n/g, '<br/>') + '</p>\n';
+      html += '<p>' + this.description.replace(/\n/g, '<br>') + '</p>\n';
     }
 
     // Export own request handlers.
@@ -430,7 +428,7 @@ API.prototype = {
       html += '<h2 id="' + getAnchor(title) + '">' + title + '</h2>\n';
       html += '<pre>' + method.toUpperCase() + ' ' + fullPath + '</pre>\n';
       if (handler.description) {
-        html += '<p>' + handler.description.replace(/\n/g, '<br/>') + '</p>\n';
+        html += '<p>' + handler.description.replace(/\n/g, '<br>') + '</p>\n';
       }
 
       if (handler.examples && handler.examples.length > 0) {
@@ -440,11 +438,11 @@ API.prototype = {
         if (request.headers || request.body || request.urlParameters) {
           html += '<h3>Input</h3>\n<pre>';
 
-          // Format example-specific URL
+          // Format example-specific URL.
           var exampleURL = method.toUpperCase() + ' ' + fullPath;
           var requestParameters = request.urlParameters || {};
-          for (var requestParam in requestParameters) {
-            exampleURL = exampleURL.replace(':' + requestParam, requestParameters[requestParam]);
+          for (var parameter in requestParameters) {
+            exampleURL = exampleURL.replace(':' + parameter, requestParameters[parameter]);
           }
           html += exampleURL + '\n';
 
@@ -453,7 +451,7 @@ API.prototype = {
             html += header + ': ' + requestHeaders[header] + '\n';
           }
           if (request.body) {
-            html += '\n' + ensureSerialized(request.body, 4).trim() + '\n';
+            html += '\n' + jsonStringify(request.body).trim() + '\n';
           }
           html += '</pre>\n';
         }
@@ -470,7 +468,7 @@ API.prototype = {
             html += header + ': ' + responseHeaders[header] + '\n';
           }
           if (response.body) {
-            html += '\n' + ensureSerialized(response.body, 4).trim() + '\n';
+            html += '\n' + jsonStringify(response.body).trim() + '\n';
           }
           html += '</pre>\n';
         }
@@ -519,8 +517,8 @@ API.prototype = {
           // Format example-specific URL
           var exampleURL = '    ' + method.toUpperCase() + ' ' + fullPath;
           var requestParameters = request.urlParameters || {};
-          for (var requestParam in requestParameters) {
-            exampleURL = exampleURL.replace(':' + requestParam, requestParameters[requestParam]);
+          for (var parameter in requestParameters) {
+            exampleURL = exampleURL.replace(':' + parameter, requestParameters[parameter]);
           }
           markdown += exampleURL + '\n';
 
@@ -530,7 +528,7 @@ API.prototype = {
           }
           if (request.body) {
             var requestBody = '    ' +
-              ensureSerialized(request.body, 4).trim().replace(/\n/g, '\n    ');
+              jsonStringify(request.body).trim().replace(/\n/g, '\n    ');
             markdown += '    \n' + requestBody + '\n';
           }
           markdown += '\n';
@@ -549,7 +547,7 @@ API.prototype = {
           }
           if (response.body) {
             var responseBody = '    ' +
-              ensureSerialized(response.body, 4).trim().replace(/\n/g, '\n    ');
+              jsonStringify(response.body).trim().replace(/\n/g, '\n    ');
             markdown += '    \n' + responseBody + '\n';
           }
           markdown += '\n';
@@ -603,6 +601,14 @@ function getHandlerExporter (app) {
     }
     app[method](path, parameters.handler);
   };
+}
+
+// Stringify object, pass down strings
+function jsonStringify(strOrObject) {
+  if (strOrObject instanceof Object) {
+    return JSON.stringify(strOrObject, options.jsonStringifyReplacer, options.jsonStringifySpaces);
+  }
+  return strOrObject;
 }
 
 // Exported `selfapi` function to create an API tree.
