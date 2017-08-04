@@ -7,8 +7,8 @@ var nodepath = require('path');
 var url = require('url');
 
 var options = {
-    jsonStringifyReplacer: null,
-    jsonStringifySpaces: 2
+  jsonStringifyReplacer: null,
+  jsonStringifySpaces: 2
 };
 
 // Simple, self-documenting and self-testing API system.
@@ -309,7 +309,7 @@ API.prototype = {
 
         var expectedBody = null;
         if ('body' in exampleResponse) {
-          expectedBody = jsonStringify(exampleResponse.body).trim();
+          expectedBody = maybeJsonStringify(exampleResponse.body).trim();
         }
 
         var body = '';
@@ -375,16 +375,12 @@ API.prototype = {
   // Build index routes.
   toAPIIndex: function (basePath) {
     var fullPath = normalizePath(this.path, basePath) || '/';
-    return function () {
-      var routes = {};
-      Object.keys(this.children).forEach(function (child) {
-        if (child == "null") {
-          return;
-        }
-        routes[child.replace(/^\//, '')] = nodepath.join(fullPath, child);
-      });
-      return routes;
-    };
+
+    var routes = {};
+    Object.keys(this.children).forEach(function (child) {
+      routes[child.replace(/^\//, '')] = nodepath.join(fullPath, child);
+    });
+    return routes;
   },
 
   // Export API documentation as HTML.
@@ -448,7 +444,7 @@ API.prototype = {
             html += header + ': ' + requestHeaders[header] + '\n';
           }
           if (request.body) {
-            html += '\n' + jsonStringify(request.body).trim() + '\n';
+            html += '\n' + maybeJsonStringify(request.body).trim() + '\n';
           }
           html += '</pre>\n';
         }
@@ -465,7 +461,7 @@ API.prototype = {
             html += header + ': ' + responseHeaders[header] + '\n';
           }
           if (response.body) {
-            html += '\n' + jsonStringify(response.body).trim() + '\n';
+            html += '\n' + maybeJsonStringify(response.body).trim() + '\n';
           }
           html += '</pre>\n';
         }
@@ -525,7 +521,7 @@ API.prototype = {
           }
           if (request.body) {
             var requestBody = '    ' +
-              jsonStringify(request.body).trim().replace(/\n/g, '\n    ');
+              maybeJsonStringify(request.body).trim().replace(/\n/g, '\n    ');
             markdown += '    \n' + requestBody + '\n';
           }
           markdown += '\n';
@@ -544,7 +540,7 @@ API.prototype = {
           }
           if (response.body) {
             var responseBody = '    ' +
-              jsonStringify(response.body).trim().replace(/\n/g, '\n    ');
+              maybeJsonStringify(response.body).trim().replace(/\n/g, '\n    ');
             markdown += '    \n' + responseBody + '\n';
           }
           markdown += '\n';
@@ -600,12 +596,16 @@ function getHandlerExporter (app) {
   };
 }
 
-// Stringify object, pass down strings
-function jsonStringify(strOrObject) {
-  if (strOrObject instanceof Object) {
-    return JSON.stringify(strOrObject, options.jsonStringifyReplacer, options.jsonStringifySpaces);
+// Stringify Objects, leave non-Objects untouched (e.g. Strings).
+function maybeJsonStringify (value) {
+  if (value instanceof Object) {
+    return JSON.stringify(
+      value,
+      options.jsonStringifyReplacer,
+      options.jsonStringifySpaces
+    );
   }
-  return strOrObject;
+  return value;
 }
 
 // Exported `selfapi` function to create an API tree.
@@ -674,4 +674,5 @@ function selfapi (/* parent, …overrides, child */) {
 }
 
 selfapi.API = API;
+selfapi.options = options;
 module.exports = selfapi;
