@@ -366,7 +366,7 @@ API.prototype = {
       }, 10000);
 
       if ('body' in exampleRequest) {
-        request.write(exampleRequest.body);
+        request.write(maybeJsonStringify(exampleRequest.body));
       }
       request.end();
     });
