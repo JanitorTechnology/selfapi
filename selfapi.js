@@ -133,6 +133,9 @@ API.prototype = {
     // Export own request handler examples as test functions.
     for (var method in self.handlers) {
       var handler = self.handlers[method];
+      if (!handler.examples) {
+        throw `Handler ${method.toUpperCase()} ${this.path} does not have examples!`;
+      }
       handler.examples.forEach(function (example) {
         var test =
           self.testHandlerExample.bind(self, baseUrl, method, handler, example);
