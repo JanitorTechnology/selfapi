@@ -373,12 +373,14 @@ API.prototype = {
   },
 
   // Build index routes.
-  toAPIIndex: function (basePath) {
-    var fullPath = normalizePath(this.path, basePath) || '/';
+  toAPIIndex: function (baseUrl) {
+    var fullUrl = url.parse(String(baseUrl || '/'));
+    fullUrl.pathname = normalizePath(this.path, fullUrl.pathname);
+    fullUrl = url.format(fullUrl);
 
     var routes = {};
     Object.keys(this.children).forEach(function (child) {
-      routes[child.replace(/^\//, '')] = nodepath.join(fullPath, child);
+      routes[child.replace(/^\//, '')] = nodepath.join(fullUrl, child);
     });
     return routes;
   },
