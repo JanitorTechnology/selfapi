@@ -6,6 +6,11 @@ var https = require('https');
 var nodepath = require('path');
 var url = require('url');
 
+var options = {
+  jsonStringifyReplacer: null,
+  jsonStringifySpaces: 2
+};
+
 // Simple, self-documenting and self-testing API system.
 function API (parameters) {
   // Own API resource prefix (e.g. '/resource').
@@ -128,6 +133,12 @@ API.prototype = {
     // Export own request handler examples as test functions.
     for (var method in self.handlers) {
       var handler = self.handlers[method];
+      if (!handler.examples) {
+        throw (
+          'Handler ' + method.toUpperCase() + ' ' + this.path +
+            ' does not have examples!'
+        );
+      }
       handler.examples.forEach(function (example) {
         var test =
           self.testHandlerExample.bind(self, baseUrl, method, handler, example);
@@ -304,7 +315,7 @@ API.prototype = {
 
         var expectedBody = null;
         if ('body' in exampleResponse) {
-          expectedBody = exampleResponse.body.trim();
+          expectedBody = maybeJsonStringify(exampleResponse.body).trim();
         }
 
         var body = '';
@@ -361,10 +372,23 @@ API.prototype = {
       }, 10000);
 
       if ('body' in exampleRequest) {
-        request.write(exampleRequest.body);
+        request.write(maybeJsonStringify(exampleRequest.body));
       }
       request.end();
     });
+  },
+
+  // Build index routes.
+  toAPIIndex: function (baseUrl) {
+    var fullUrl = url.parse(String(baseUrl || '/'));
+    fullUrl.pathname = normalizePath(this.path, fullUrl.pathname);
+    fullUrl = url.format(fullUrl);
+
+    var routes = {};
+    Object.keys(this.children).forEach(function (child) {
+      routes[child.replace(/^\//, '')] = nodepath.join(fullUrl, child);
+    });
+    return routes;
   },
 
   // Export API documentation as HTML.
@@ -395,7 +419,7 @@ API.prototype = {
         '<h1 id="' + getAnchor(this.title) + '">' + this.title + '</h1>\n';
     }
     if (this.description) {
-      html += '<p>' + this.description + '</p>\n';
+      html += '<p>' + this.description.replace(/\n/g, '<br>') + '</p>\n';
     }
 
     // Export own request handlers.
@@ -405,21 +429,30 @@ API.prototype = {
       html += '<h2 id="' + getAnchor(title) + '">' + title + '</h2>\n';
       html += '<pre>' + method.toUpperCase() + ' ' + fullPath + '</pre>\n';
       if (handler.description) {
-        html += '<p>' + handler.description + '</p>\n';
+        html += '<p>' + handler.description.replace(/\n/g, '<br>') + '</p>\n';
       }
 
       if (handler.examples && handler.examples.length > 0) {
         var example = handler.examples[0];
 
         var request = example.request || {};
-        if (request.headers || request.body) {
+        if (request.headers || request.body || request.urlParameters) {
           html += '<h3>Input</h3>\n<pre>';
+
+          // Format example-specific URL.
+          var exampleURL = method.toUpperCase() + ' ' + fullPath;
+          var requestParameters = request.urlParameters || {};
+          for (var parameter in requestParameters) {
+            exampleURL = exampleURL.replace(':' + parameter, requestParameters[parameter]);
+          }
+          html += exampleURL + '\n';
+
           var requestHeaders = request.headers || {};
           for (var header in requestHeaders) {
             html += header + ': ' + requestHeaders[header] + '\n';
           }
           if (request.body) {
-            html += '\n' + request.body.trim() + '\n';
+            html += '\n' + maybeJsonStringify(request.body).trim() + '\n';
           }
           html += '</pre>\n';
         }
@@ -436,7 +469,7 @@ API.prototype = {
             html += header + ': ' + responseHeaders[header] + '\n';
           }
           if (response.body) {
-            html += '\n' + response.body.trim() + '\n';
+            html += '\n' + maybeJsonStringify(response.body).trim() + '\n';
           }
           html += '</pre>\n';
         }
@@ -479,15 +512,24 @@ API.prototype = {
         var example = handler.examples[0];
 
         var request = example.request || {};
-        if (request.headers || request.body) {
+        if (request.headers || request.body || request.urlParameters) {
           markdown += '### Example input:\n\n';
+
+          // Format example-specific URL
+          var exampleURL = '    ' + method.toUpperCase() + ' ' + fullPath;
+          var requestParameters = request.urlParameters || {};
+          for (var parameter in requestParameters) {
+            exampleURL = exampleURL.replace(':' + parameter, requestParameters[parameter]);
+          }
+          markdown += exampleURL + '\n';
+
           var requestHeaders = request.headers || {};
           for (var header in requestHeaders) {
             markdown += '    ' + header + ': ' + requestHeaders[header] + '\n';
           }
           if (request.body) {
             var requestBody = '    ' +
-              request.body.trim().replace(/\n/g, '\n    ');
+              maybeJsonStringify(request.body).trim().replace(/\n/g, '\n    ');
             markdown += '    \n' + requestBody + '\n';
           }
           markdown += '\n';
@@ -506,7 +548,7 @@ API.prototype = {
           }
           if (response.body) {
             var responseBody = '    ' +
-              response.body.trim().replace(/\n/g, '\n    ');
+              maybeJsonStringify(response.body).trim().replace(/\n/g, '\n    ');
             markdown += '    \n' + responseBody + '\n';
           }
           markdown += '\n';
@@ -555,11 +597,20 @@ function getHandlerExporter (app) {
   // `app` is an express-like server app.
   return function (method, path, parameters) {
     // Support restify.
-    if (method === 'delete' && ('del' in app)) {
-      method = 'del';
+    if (method === 'del' && ('delete' in app)) {
+      method = 'delete';
     }
     app[method](path, parameters.handler);
   };
+}
+
+// Stringify Objects, leave non-Objects untouched (e.g. Strings).
+function maybeJsonStringify (value) {
+  if (!(value instanceof Object)) {
+    return value;
+  }
+  return JSON.stringify(value, options.jsonStringifyReplacer,
+    options.jsonStringifySpaces);
 }
 
 // Exported `selfapi` function to create an API tree.
@@ -628,4 +679,5 @@ function selfapi (/* parent, …overrides, child */) {
 }
 
 selfapi.API = API;
+selfapi.options = options;
 module.exports = selfapi;

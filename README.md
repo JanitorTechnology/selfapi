@@ -127,6 +127,10 @@ Create a new item and add it to our collection.
 Results: 2/2 tests passed.
 ```
 
+Note:  When testing the API, all your routes should have `examples`, which
+might be empty. This is to ensure all routes are documented and you are well
+aware some endpoints are lacking tests.
+
 Note: You can also document and test each API resource individually, but remember to provide the correct base path like so:
 
 ```markdown
