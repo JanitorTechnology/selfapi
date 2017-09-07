@@ -134,7 +134,10 @@ API.prototype = {
     for (var method in self.handlers) {
       var handler = self.handlers[method];
       if (!handler.examples) {
-        throw `Handler ${method.toUpperCase()} ${this.path} does not have examples!`;
+        throw (
+          'Handler ' + method.toUpperCase() + ' ' + this.path +
+            ' does not have examples!'
+        );
       }
       handler.examples.forEach(function (example) {
         var test =
@@ -603,14 +606,11 @@ function getHandlerExporter (app) {
 
 // Stringify Objects, leave non-Objects untouched (e.g. Strings).
 function maybeJsonStringify (value) {
-  if (value instanceof Object) {
-    return JSON.stringify(
-      value,
-      options.jsonStringifyReplacer,
-      options.jsonStringifySpaces
-    );
+  if (!(value instanceof Object)) {
+    return value;
   }
-  return value;
+  return JSON.stringify(value, options.jsonStringifyReplacer,
+    options.jsonStringifySpaces);
 }
 
 // Exported `selfapi` function to create an API tree.
