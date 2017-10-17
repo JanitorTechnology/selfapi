@@ -317,6 +317,79 @@ tests.push({
   }
 });
 
+tests.push({
+  title: 'Handle URL parameters like \':parameter\' and \'*\'',
+
+  test: function (port, callback) {
+    // Create a new API using Express.
+    var app = express();
+    var api = selfapi(app, '/api');
+
+    // Add handlers expecting URL parameters.
+    api.get('/named/:parameter', {
+      title: 'URL parameter \':parameter\'',
+      handler: function (request, response) {
+        response.end(request.params.parameter);
+      },
+      examples: [{
+        request: {
+          urlParameters: { parameter: 'named-parameter' }
+        },
+        response: {
+          body: 'named-parameter'
+        }
+      }]
+    });
+    api.get('/unnamed/*', {
+      title: 'URL parameter \'*\'',
+      handler: function (request, response) {
+        response.end(request.params[0]);
+      },
+      examples: [{
+        request: {
+          urlParameters: { '*': 'unnamed-parameter' }
+        },
+        response: {
+          body: 'unnamed-parameter'
+        }
+      }]
+    });
+
+    // Start the app and self-test the API.
+    app.listen(port, function () {
+      api.test('http://localhost:' + port, function (error, results) {
+        if (error) {
+          callback(error);
+          return;
+        }
+
+        if (results.failed.length > 0) {
+          callback(new Error('URL parameter test(s) failed: ' +
+            JSON.stringify(results.failed, null, 2)));
+          return;
+        }
+
+        var markdown = api.toMarkdown();
+        var patterns = [
+          '/api/named/named-parameter',
+          '/api/unnamed/unnamed-parameter',
+        ];
+
+        for (var i = 0; i < patterns.length; i++) {
+          var pattern = patterns[i];
+          if (!markdown.match(new RegExp(pattern))) {
+            callback(new Error('Expected generated markdown documentation to ' +
+              'contain \'' + pattern + '\':\n' + markdown));
+            return;
+          }
+        }
+
+        callback();
+      });
+    });
+  }
+});
+
 /*
 tests.push({
   title: '',
