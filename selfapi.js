@@ -469,7 +469,10 @@ API.prototype = {
             html += header + ': ' + responseHeaders[header] + '\n';
           }
           if (response.body) {
-            html += '\n' + maybeJsonStringify(response.body).trim() + '\n';
+            if (response.status || Object.keys(responseHeaders).length > 0) {
+              html += '\n';
+            }
+            html += maybeJsonStringify(response.body).trim() + '\n';
           }
           html += '</pre>\n';
         }
@@ -547,9 +550,11 @@ API.prototype = {
             markdown += '    ' + header + ': ' + responseHeaders[header] + '\n';
           }
           if (response.body) {
-            var responseBody = '    ' +
-              maybeJsonStringify(response.body).trim().replace(/\n/g, '\n    ');
-            markdown += '    \n' + responseBody + '\n';
+            if (response.status || Object.keys(responseHeaders).length > 0) {
+              markdown += '    \n';
+            }
+            markdown += '    ' + maybeJsonStringify(response.body).trim()
+              .replace(/\n/g, '\n    ') + '\n';
           }
           markdown += '\n';
         }
