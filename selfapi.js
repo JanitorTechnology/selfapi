@@ -260,11 +260,8 @@ API.prototype = {
     var exampleResponse = example.response || {};
 
     if (exampleRequest.urlParameters) {
-      for (var urlParameter in exampleRequest.urlParameters) {
-        var regex = new RegExp(':' + urlParameter, 'g');
-        var urlValue = exampleRequest.urlParameters[urlParameter];
-        requestOptions.path = requestOptions.path.replace(regex, urlValue);
-      }
+      requestOptions.path = replaceUrlParameters(requestOptions.path,
+        exampleRequest.urlParameters);
     }
 
     if (exampleRequest.queryParameters) {
@@ -436,17 +433,14 @@ API.prototype = {
         var example = handler.examples[0];
 
         var request = example.request || {};
-        if (request.headers || request.body || request.urlParameters) {
+        if (request.urlParameters || request.headers || request.body) {
           html += '<h3>Input</h3>\n<pre>';
-
-          // Format example-specific URL.
           var exampleURL = method.toUpperCase() + ' ' + fullPath;
-          var requestParameters = request.urlParameters || {};
-          for (var parameter in requestParameters) {
-            exampleURL = exampleURL.replace(':' + parameter, requestParameters[parameter]);
+          if (request.urlParameters) {
+            exampleURL = replaceUrlParameters(exampleURL,
+              request.urlParameters);
           }
           html += exampleURL + '\n';
-
           var requestHeaders = request.headers || {};
           for (var header in requestHeaders) {
             html += header + ': ' + requestHeaders[header] + '\n';
@@ -515,17 +509,14 @@ API.prototype = {
         var example = handler.examples[0];
 
         var request = example.request || {};
-        if (request.headers || request.body || request.urlParameters) {
+        if (request.urlParameters || request.headers || request.body) {
           markdown += '### Example input:\n\n';
-
-          // Format example-specific URL
           var exampleURL = '    ' + method.toUpperCase() + ' ' + fullPath;
-          var requestParameters = request.urlParameters || {};
-          for (var parameter in requestParameters) {
-            exampleURL = exampleURL.replace(':' + parameter, requestParameters[parameter]);
+          if (request.urlParameters) {
+            exampleURL = replaceUrlParameters(exampleURL,
+              request.urlParameters);
           }
           markdown += exampleURL + '\n';
-
           var requestHeaders = request.headers || {};
           for (var header in requestHeaders) {
             markdown += '    ' + header + ': ' + requestHeaders[header] + '\n';
@@ -616,6 +607,19 @@ function maybeJsonStringify (value) {
   }
   return JSON.stringify(value, options.jsonStringifyReplacer,
     options.jsonStringifySpaces);
+}
+
+// Replace URL parameters like ':param' or '*' with the provided example values.
+function replaceUrlParameters (url, urlParameters) {
+  var replacedUrl = url;
+  for (var urlParameter in urlParameters) {
+    var regex = (urlParameter === '*'
+      ? new RegExp('\\*') // The first occurrence of the literal character '*'.
+      : new RegExp(':' + urlParameter, 'g')); // All occurrences of `:param`.
+    var urlValue = urlParameters[urlParameter];
+    replacedUrl = replacedUrl.replace(regex, urlValue);
+  }
+  return replacedUrl;
 }
 
 // Exported `selfapi` function to create an API tree.
