@@ -31,7 +31,7 @@ tests.push({
 
     // Verify the parent knows about the pre-existing handler.
     if (app.handlers['get']['/api'] !== parameters.handler) {
-      var handlers = JSON.stringify(app.handlers);
+      var handlers = jsonStringifyWithFunctions(app.handlers);
       callback(new Error('/api handler not in: ' + handlers));
       return;
     }
@@ -178,7 +178,7 @@ tests.push({
         if (results.passed.length !== 4 || results.failed.length !== 1) {
           callback(new Error(
             'Self-test results should include 1 failed and 4 passed: ' +
-            JSON.stringify(results, null, 2)));
+            jsonStringifyWithFunctions(results)));
           return;
         }
         callback();
@@ -390,6 +390,78 @@ tests.push({
   }
 });
 
+tests.push({
+  title: 'Examples with validation functions instead of values',
+
+  test: function (port, callback) {
+    // Create a new API using Express.
+    var app = express();
+    var api = selfapi(app, '/api');
+
+    // Add a request handler with an example containing validation functions.
+    api.get('/dice', {
+      title: 'Roll a dice',
+      handler: function (request, response) {
+        response.statusCode = 226; // IM Used
+        response.setHeader('X-Open-Source',
+          'https://github.com/janitortechnology/selfapi');
+        var result = Math.floor(Math.random() * 6) + 1;
+        response.end(String(result));
+      },
+      examples: [{
+        response: {
+          status: function (status) {
+            return status >= 200 && status < 300;
+          },
+          body: function (body) {
+            var result = parseInt(body.trim(), 10);
+            return result > 0 && result <= 6;
+          },
+          headers: {
+            'X-Open-Source': function (header) {
+              return String(header).indexOf('selfapi') >= 0;
+            }
+          }
+        }
+      }]
+    });
+
+    // Start the app and self-test the API.
+    app.listen(port, function () {
+      api.test('http://localhost:' + port, function (error, results) {
+        if (error) {
+          callback(error);
+          return;
+        }
+        if (results.failed.length > 0) {
+          callback(new Error(
+            'Self-tests do not support examples with validation functions: ' +
+            jsonStringifyWithFunctions(results)));
+          return;
+        }
+
+        // Verify that self-documentation supports validation functions.
+        var markdown = api.toMarkdown();
+        if (typeof markdown !== 'string' || markdown.indexOf('Roll') < 0) {
+          callback(new Error(
+            'Markdown self-documentation does not support examples with ' +
+            'validation functions:\n' + markdown));
+          return;
+        }
+        var html = api.toHTML();
+        if (typeof html !== 'string' || html.indexOf('Roll') < 0) {
+          callback(new Error(
+            'HTML self-documentation does not support examples with ' +
+            'validation functions:\n' + html));
+          return;
+        }
+
+        callback();
+      });
+    });
+  }
+});
+
 /*
 tests.push({
   title: '',
@@ -404,6 +476,17 @@ tests.push({
 // TODO test all ways to create API resources
 // TODO test that documentation works
 // TODO test with restify and scoutcamp
+
+function jsonStringifyWithFunctions (value) {
+  function replacer (key, value) {
+    if (typeof value === 'function') {
+      // Stringify this function, and slightly minify it.
+      value = String(value).replace(/\s+/g, ' ');
+    }
+    return value;
+  }
+  return JSON.stringify(value, replacer, 2);
+}
 
 function fakeServer () {
   var server = {

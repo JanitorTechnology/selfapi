@@ -179,7 +179,7 @@ API.prototype = {
       console.log('Results: ' + results.passed.length + '/' + total + ' test' +
         (total === 1 ? '' : 's') + ' passed.');
       if (results.failed.length > 0) {
-        console.error('Failed:', JSON.stringify(results.failed, null, 2));
+        console.error('Failed:', jsonStringifyWithFunctions(results.failed));
       }
     };
 
@@ -294,8 +294,12 @@ API.prototype = {
       var request = client.request(requestOptions, function (response) {
         var success = true;
 
-        var expectedStatusCode = exampleResponse.status || 200;
-        if (response.statusCode !== expectedStatusCode) {
+        var expectedStatusCode = (typeof exampleResponse.status === 'function'
+          ? exampleResponse.status
+          : function (statusCode) {
+            return statusCode === (exampleResponse.status || 200);
+          });
+        if (!expectedStatusCode(response.statusCode)) {
           success = false;
         }
 
@@ -303,7 +307,13 @@ API.prototype = {
         if (exampleResponse.headers) {
           expectedHeaders = exampleResponse.headers;
           for (var header in expectedHeaders) {
-            if (response[header.toLowerCase()] !== expectedHeaders[header]) {
+            var headerValue = expectedHeaders[header];
+            var expectedHeaderValue = (typeof headerValue === 'function'
+              ? headerValue
+              : function (value) {
+                return value === headerValue;
+              });
+            if (!expectedHeaderValue(response.headers[header.toLowerCase()])) {
               success = false;
               break;
             }
@@ -312,7 +322,12 @@ API.prototype = {
 
         var expectedBody = null;
         if ('body' in exampleResponse) {
-          expectedBody = maybeJsonStringify(exampleResponse.body).trim();
+          var exampleBody = exampleResponse.body;
+          expectedBody = (typeof exampleBody === 'function'
+            ? exampleBody
+            : function (body) {
+              return body === jsonStringifyIfObject(exampleBody).trim();
+            });
         }
 
         var body = '';
@@ -323,7 +338,7 @@ API.prototype = {
         response.on('end', function () {
           clearTimeout(timeout);
           body = body.trim();
-          if (expectedBody !== null && body !== expectedBody) {
+          if (expectedBody !== null && !expectedBody(body)) {
             success = false;
           }
           if (success) {
@@ -369,7 +384,7 @@ API.prototype = {
       }, 10000);
 
       if ('body' in exampleRequest) {
-        request.write(maybeJsonStringify(exampleRequest.body));
+        request.write(jsonStringifyIfObject(exampleRequest.body));
       }
       request.end();
     });
@@ -446,27 +461,32 @@ API.prototype = {
             html += header + ': ' + requestHeaders[header] + '\n';
           }
           if (request.body) {
-            html += '\n' + maybeJsonStringify(request.body).trim() + '\n';
+            html += '\n' + jsonStringifyIfObject(request.body).trim() + '\n';
           }
           html += '</pre>\n';
         }
 
         var response = example.response || {};
-        if (response.status || response.headers || response.body) {
+        var hasResponseStatus = isExplicitExample(response.status);
+        var hasResponseBody = isExplicitExample(response.body);
+        if (hasResponseStatus || response.headers || hasResponseBody) {
           html += '<h3>Response</h3>\n<pre>';
-          if (response.status) {
+          if (hasResponseStatus) {
             var message = http.STATUS_CODES[response.status];
             html += 'Status: ' + response.status + ' ' + message + '\n';
           }
           var responseHeaders = response.headers || {};
           for (var header in responseHeaders) {
-            html += header + ': ' + responseHeaders[header] + '\n';
+            var headerValue = responseHeaders[header];
+            if (isExplicitExample(headerValue)) {
+              html += header + ': ' + headerValue + '\n';
+            }
           }
-          if (response.body) {
-            if (response.status || Object.keys(responseHeaders).length > 0) {
+          if (hasResponseBody) {
+            if (hasResponseStatus || Object.keys(responseHeaders).length > 0) {
               html += '\n';
             }
-            html += maybeJsonStringify(response.body).trim() + '\n';
+            html += jsonStringifyIfObject(response.body).trim() + '\n';
           }
           html += '</pre>\n';
         }
@@ -522,29 +542,34 @@ API.prototype = {
             markdown += '    ' + header + ': ' + requestHeaders[header] + '\n';
           }
           if (request.body) {
-            var requestBody = '    ' +
-              maybeJsonStringify(request.body).trim().replace(/\n/g, '\n    ');
+            var requestBody = '    ' + jsonStringifyIfObject(request.body)
+              .trim().replace(/\n/g, '\n    ');
             markdown += '    \n' + requestBody + '\n';
           }
           markdown += '\n';
         }
 
         var response = example.response || {};
-        if (response.status || response.headers || response.body) {
+        var hasResponseStatus = isExplicitExample(response.status);
+        var hasResponseBody = isExplicitExample(response.body);
+        if (hasResponseStatus || response.headers || hasResponseBody) {
           markdown += '### Example response:\n\n';
-          if (response.status) {
+          if (hasResponseStatus) {
             var message = http.STATUS_CODES[response.status];
             markdown += '    Status: ' + response.status + ' ' + message + '\n';
           }
           var responseHeaders = response.headers || {};
           for (var header in responseHeaders) {
-            markdown += '    ' + header + ': ' + responseHeaders[header] + '\n';
+            var value = responseHeaders[header];
+            if (isExplicitExample(value)) {
+              markdown += '    ' + header + ': ' + value + '\n';
+            }
           }
-          if (response.body) {
-            if (response.status || Object.keys(responseHeaders).length > 0) {
+          if (hasResponseBody) {
+            if (hasResponseStatus || Object.keys(responseHeaders).length > 0) {
               markdown += '    \n';
             }
-            markdown += '    ' + maybeJsonStringify(response.body).trim()
+            markdown += '    ' + jsonStringifyIfObject(response.body).trim()
               .replace(/\n/g, '\n    ') + '\n';
           }
           markdown += '\n';
@@ -601,7 +626,7 @@ function getHandlerExporter (app) {
 }
 
 // Stringify Objects, leave non-Objects untouched (e.g. Strings).
-function maybeJsonStringify (value) {
+function jsonStringifyIfObject (value) {
   if (!(value instanceof Object)) {
     return value;
   }
@@ -620,6 +645,23 @@ function replaceUrlParameters (url, urlParameters) {
     replacedUrl = replacedUrl.replace(regex, urlValue);
   }
   return replacedUrl;
+}
+
+// Stringify everything, including Function bodies.
+function jsonStringifyWithFunctions (value) {
+  function replacer (key, value) {
+    if (typeof value === 'function') {
+      // Stringify this function, and slightly minify it.
+      value = String(value).replace(/\s+/g, ' ');
+    }
+    return options.jsonStringifyReplacer(key, value);
+  }
+  return JSON.stringify(value, replacer, options.jsonStringifySpaces);
+}
+
+// Determine if an example value is defined, but not a function.
+function isExplicitExample (value) {
+  return !!value && typeof value !== 'function';
 }
 
 // Exported `selfapi` function to create an API tree.
