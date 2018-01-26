@@ -1,8 +1,9 @@
 # Self API
 
-[![Travis status badge](https://img.shields.io/travis/JanitorTechnology/selfapi.svg)](https://travis-ci.org/JanitorTechnology/selfapi)
-[![Greenkeeper badge](https://img.shields.io/badge/greenkeeper-enabled-brightgreen.svg)](https://greenkeeper.io/)
-[![NPM version badge](https://img.shields.io/npm/v/selfapi.svg)](https://www.npmjs.com/package/selfapi)
+[![Travis status](https://img.shields.io/travis/JanitorTechnology/selfapi.svg)](https://travis-ci.org/JanitorTechnology/selfapi)
+[![Greenkeeper](https://img.shields.io/badge/greenkeeper-enabled-brightgreen.svg)](https://greenkeeper.io/)
+[![NPM version](https://img.shields.io/npm/v/selfapi.svg)](https://www.npmjs.com/package/selfapi)
+[![NPM dependencies](https://img.shields.io/david/JanitorTechnology/selfapi.svg)](https://david-dm.org/JanitorTechnology/selfapi)
 
 Simple, self-documenting and self-testing API system for Node.js.
 
