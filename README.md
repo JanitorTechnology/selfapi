@@ -1,11 +1,11 @@
 # Self API
 
 [![Travis status](https://img.shields.io/travis/JanitorTechnology/selfapi.svg)](https://travis-ci.org/JanitorTechnology/selfapi)
-[![Greenkeeper](https://img.shields.io/badge/greenkeeper-enabled-brightgreen.svg)](https://greenkeeper.io/)
 [![NPM version](https://img.shields.io/npm/v/selfapi.svg)](https://www.npmjs.com/package/selfapi)
 [![NPM dependencies](https://img.shields.io/david/JanitorTechnology/selfapi.svg)](https://david-dm.org/JanitorTechnology/selfapi)
+[![Renovate](https://img.shields.io/badge/renovate-enabled-brightgreen.svg)](https://https://renovatebot.com/)
 
-Simple, self-documenting and self-testing API system for Node.js.
+Simple, self-documenting and self-testing API helper for Node.js.
 
 Works with [express](http://expressjs.com/), [restify](http://restify.com/) and
 [scout camp](https://github.com/espadrine/sc).
