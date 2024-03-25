@@ -30,6 +30,6 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "express": "5.0.0-alpha.6"
+    "express": "5.0.0-beta.3"
   }
 }
